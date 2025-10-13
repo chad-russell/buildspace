@@ -10,20 +10,21 @@ interface PageDesignCanvasProps {
   data: Data
   metadata: PuckMetadata
   onChange: (data: Data) => void
+  // When this value changes, Puck is remounted. Parent should only
+  // change it when external data is swapped in, not on each edit.
+  resetKey?: string | number
 }
 
 export function PageDesignCanvas({
   data,
   metadata,
   onChange,
+  resetKey,
 }: PageDesignCanvasProps) {
-  // Force Puck to remount when data changes externally
-  const dataKey = JSON.stringify(data.content)
-  
   return (
     <div className="w-full h-full">
       <Puck
-        key={dataKey}
+        key={resetKey}
         config={puckConfig}
         data={data}
         metadata={metadata}

@@ -41,6 +41,7 @@ export interface HttpRequestNodeData {
   headers: Record<string, string>
   body?: string
   queryParams: Record<string, string>
+  previewData?: any // Stores fetched preview response for design-time binding
 }
 
 export interface SelectNodeData {

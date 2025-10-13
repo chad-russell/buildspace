@@ -20,9 +20,23 @@ export const DataPathField: CustomField<DataPath> = {
           nodeId: string
           path: (string | number)[]
         }
+        // Infer node type from nodeId prefix (e.g., "data-0" -> "data", "httpRequest-0" -> "httpRequest")
+        const nodeType = nodeId.split("-")[0]
+        
         // Join numeric segments as plain dotted segments to match resolveDataPath
         const dot = path.map((seg) => `${seg}`).join(".")
-        const next = `${nodeId}.jsonData${dot ? "." + dot : ""}`
+        
+        // For data nodes, use .jsonData path; for other nodes (like httpRequest), use direct path
+        // TODO(chad): why jsonData for data nodes, and not direct path for other nodes? Let's make an effort to simplify this.
+        let next: string
+        if (nodeType === "data") {
+          next = `${nodeId}.jsonData${dot ? "." + dot : ""}`
+        } else {
+          // For httpRequest and other nodes, the path is direct
+          // resolveDataPath will handle looking into previewData for httpRequest nodes
+          next = `${nodeId}${dot ? "." + dot : ""}`
+        }
+        
         onChange(next)
       } catch {}
     }

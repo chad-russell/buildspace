@@ -27,12 +27,7 @@ export const TextComponent: ComponentConfig<TextProps> = {
     useDataBinding: false,
     dataPath: "",
   },
-  resolveData: async ({ props }) => {
-    if ((props as any).dataPath && !(props as any).useDataBinding) {
-      return { props: { ...props, useDataBinding: true } as any }
-    }
-    return { props }
-  },
+  // resolveData removed - was causing focus loss on input due to prop mutations
   render: ({ text, useDataBinding, dataPath, puck }) => {
     let displayText = text
     let debugInfo = null

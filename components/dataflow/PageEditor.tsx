@@ -33,6 +33,8 @@ export function PageEditor({
   const [hasChanges, setHasChanges] = useState(false)
   const [isSavingDataflow, setIsSavingDataflow] = useState(false)
   const isInitialMount = useRef(true)
+  // Keep a stable key that only changes when we load new puckData from the page node
+  const [resetKey, setResetKey] = useState(0)
 
   // Get live dependencies and ALL nodes from the store
   const dependencies = useDataFlowStore((state) =>
@@ -46,6 +48,8 @@ export function PageEditor({
   useEffect(() => {
     if (pageNode?.data?.puckData) {
       setPuckData(pageNode.data.puckData)
+      // Bump reset key so Puck remounts only when external data is swapped in
+      setResetKey((k) => k + 1)
     }
   }, [pageNode])
 
@@ -129,7 +133,6 @@ export function PageEditor({
         setHasChanges(false)
         // Keep the in-memory store in sync so subsequent graph saves don't wipe puckData
         updateNodeData(pageNodeId, { puckData })
-        console.log("Updated node data in store with puckData")
         // Could show a success toast here
       } else {
         console.error("Failed to save page design")
@@ -188,6 +191,7 @@ export function PageEditor({
             data={puckData}
             metadata={metadata}
             onChange={handlePuckChange}
+            resetKey={resetKey}
           />
         </div>
       </div>

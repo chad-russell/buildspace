@@ -53,7 +53,16 @@ function resolveReference(
   
   // Navigate the path starting from the node's output root
   // For Data nodes, use jsonData so refs resolve against the authored payload
-  let result = (node.type === "data" ? node.data?.jsonData : node.data)
+  // For HttpRequest nodes, use previewData for design-time resolution
+  let result: any
+  if (node.type === "data") {
+    result = node.data?.jsonData
+  } else if (node.type === "httpRequest") {
+    result = node.data?.previewData
+  } else {
+    result = node.data
+  }
+  
   for (let i = 1; i < refArray.length; i++) {
     if (result === null || result === undefined) return undefined
     result = result[refArray[i]]
@@ -67,6 +76,7 @@ function resolveReference(
  * Helper to resolve a data path from marked inputs
  * Example: resolveDataPath(markedInputs, "data-1.jsonData.users")
  * Also resolves $ref references automatically
+ * Supports both data nodes (data-1.jsonData.field) and httpRequest nodes (httpRequest-0.field)
  */
 export function resolveDataPath(
   markedInputs: Record<string, MarkedInput>,
@@ -81,10 +91,24 @@ export function resolveDataPath(
   if (!node) return undefined
 
   // Navigate the rest of the path through the node's data
+  // Start from the appropriate root based on node type
   let result = node.data
-  for (let i = 1; i < parts.length; i++) {
-    if (result === null || result === undefined) return undefined
-    result = result[parts[i]]
+  
+  // For httpRequest nodes, if path goes directly to a field (e.g., httpRequest-0.title),
+  // use previewData as the root
+  if (node.type === "httpRequest" && parts.length > 1 && parts[1] !== "previewData") {
+    result = node.data.previewData
+    // Skip the node ID and navigate from previewData
+    for (let i = 1; i < parts.length; i++) {
+      if (result === null || result === undefined) return undefined
+      result = result[parts[i]]
+    }
+  } else {
+    // Standard navigation for data nodes or explicit paths
+    for (let i = 1; i < parts.length; i++) {
+      if (result === null || result === undefined) return undefined
+      result = result[parts[i]]
+    }
   }
 
   // Resolve any $ref references in the result

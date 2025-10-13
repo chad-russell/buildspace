@@ -56,7 +56,7 @@ export const useDataFlowStore = create<DataFlowState>((set, get) => ({
   edges: [],
   selectedNode: null,
   flowId: null,
-  flowName: "Untitled Flow",
+  flowName: "Untitled",
   isSaving: false,
 
   setFlowId: (id) => set({ flowId: id }),
@@ -130,7 +130,7 @@ export const useDataFlowStore = create<DataFlowState>((set, get) => ({
       edges: [],
       selectedNode: null,
       flowId: null,
-      flowName: "Untitled Flow",
+      flowName: "Untitled",
       isSaving: false,
     }),
 

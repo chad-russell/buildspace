@@ -55,7 +55,7 @@ export default function BuildPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          name: "Untitled Flow",
+          name: "Untitled",
           userId: "placeholder-user-id", // TODO: Replace with actual user ID from auth
           graphData: { nodes: [], edges: [] },
         }),
@@ -86,7 +86,7 @@ export default function BuildPage() {
           </div>
           <Button onClick={createNewFlow}>
             <Plus className="w-4 h-4 mr-2" />
-            New DataFlow
+            New App
           </Button>
         </div>
 

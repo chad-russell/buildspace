@@ -6,6 +6,7 @@ import { Database, Globe, Filter, Eye } from "lucide-react"
 import { BaseNode } from "./nodes/BaseNode"
 import { JsonComposer } from "@/components/json/JsonComposer"
 import { useDataFlowStore } from "@/lib/stores/dataflow-store"
+import { HttpRequestPreview } from "./nodes/HttpRequestPreview"
 
 interface MarkedInputNodeProps {
   node: Node
@@ -46,27 +47,7 @@ export function MarkedInputNode({ node }: MarkedInputNodeProps) {
         )
 
       case "httpRequest":
-        return (
-          <BaseNode
-            title={node.data.label || "HTTP Request"}
-            icon={<Globe className="w-4 h-4" />}
-            color="bg-blue-500"
-            showTargetHandle={false}
-            showSourceHandle={false}
-            nodeId={node.id}
-          >
-            <div className="space-y-2 text-xs">
-              <div>
-                <div className="font-medium text-gray-700">Method</div>
-                <div className="text-gray-600">{node.data.method || "GET"}</div>
-              </div>
-              <div>
-                <div className="font-medium text-gray-700">URL</div>
-                <div className="text-gray-600 truncate">{node.data.url || "Not set"}</div>
-              </div>
-            </div>
-          </BaseNode>
-        )
+        return <HttpRequestMarkedNode node={node} />
 
       case "select":
         return (
@@ -124,5 +105,23 @@ export function MarkedInputNode({ node }: MarkedInputNodeProps) {
   }
 
   return <div>{renderNodeContent()}</div>
+}
+
+/**
+ * HTTP Request node with preview functionality for marked inputs sidebar
+ */
+function HttpRequestMarkedNode({ node }: { node: Node }) {
+  return (
+    <BaseNode
+      title={node.data.label || "HTTP Request"}
+      icon={<Globe className="w-4 h-4" />}
+      color="bg-blue-500"
+      showTargetHandle={false}
+      showSourceHandle={false}
+      nodeId={node.id}
+    >
+      <HttpRequestPreview nodeId={node.id} nodeData={node.data} />
+    </BaseNode>
+  )
 }
 

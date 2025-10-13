@@ -126,13 +126,65 @@ function DataNodeProperties({ node }: { node: any }) {
 }
 
 function HttpRequestNodeProperties({ node }: { node: any }) {
-  const { updateNodeData } = useDataFlowStore()
+  const { updateNodeData, flowId } = useDataFlowStore()
   const [label, setLabel] = useState(node.data.label || "HTTP Request")
   const [url, setUrl] = useState(node.data.url || "")
   const [method, setMethod] = useState(node.data.method || "GET")
+  const [isFetchingPreview, setIsFetchingPreview] = useState(false)
+  const [previewError, setPreviewError] = useState("")
 
   const handleSave = () => {
     updateNodeData(node.id, { label, url, method })
+  }
+
+  const handleFetchPreview = async () => {
+    if (!url) {
+      setPreviewError("URL is required")
+      return
+    }
+
+    setIsFetchingPreview(true)
+    setPreviewError("")
+
+    try {
+      const response = await fetch(
+        `/api/dataflows/${flowId}/nodes/${node.id}/preview`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            nodeData: {
+              url,
+              method,
+              headers: {},
+              queryParams: {},
+            },
+          }),
+        }
+      )
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to fetch preview")
+      }
+
+      const result = await response.json()
+      updateNodeData(node.id, { previewData: result.data })
+    } catch (error) {
+      console.error("Error fetching preview:", error)
+      setPreviewError(
+        error instanceof Error ? error.message : "Failed to fetch preview"
+      )
+    } finally {
+      setIsFetchingPreview(false)
+    }
+  }
+
+  const handleClearPreview = () => {
+    updateNodeData(node.id, { previewData: undefined })
+    setPreviewError("")
   }
 
   return (
@@ -148,10 +200,13 @@ function HttpRequestNodeProperties({ node }: { node: any }) {
       </div>
       <div>
         <Label htmlFor="method">Method</Label>
-        <Select value={method} onValueChange={(val) => {
-          setMethod(val)
-          updateNodeData(node.id, { method: val })
-        }}>
+        <Select
+          value={method}
+          onValueChange={(val) => {
+            setMethod(val)
+            updateNodeData(node.id, { method: val })
+          }}
+        >
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
@@ -174,6 +229,49 @@ function HttpRequestNodeProperties({ node }: { node: any }) {
           placeholder="https://api.example.com/data"
         />
       </div>
+
+      <div className="space-y-2">
+        <div className="flex gap-2">
+          <Button
+            onClick={handleFetchPreview}
+            disabled={isFetchingPreview || !url}
+            size="sm"
+            variant="outline"
+            className="flex-1"
+          >
+            {isFetchingPreview ? "Fetching..." : "Fetch Preview"}
+          </Button>
+          {node.data.previewData && (
+            <Button
+              onClick={handleClearPreview}
+              size="sm"
+              variant="ghost"
+            >
+              Clear
+            </Button>
+          )}
+        </div>
+        {previewError && (
+          <p className="text-xs text-red-500">{previewError}</p>
+        )}
+      </div>
+
+      {node.data.previewData && (
+        <div>
+          <Label>Response Preview (drag fields to bind)</Label>
+          <div className="mt-2 max-h-96 overflow-auto border rounded p-2 bg-gray-50">
+            <JsonComposer
+              value={node.data.previewData}
+              readOnly={true}
+              ownerNodeId={node.id}
+              onCreateReference={(src, dst) => {
+                const { ensureEdge } = useDataFlowStore.getState()
+                ensureEdge(src, dst)
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

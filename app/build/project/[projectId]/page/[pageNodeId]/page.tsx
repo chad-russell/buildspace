@@ -19,11 +19,9 @@ export default function PageEditorPage() {
     const loadPageData = async () => {
       try {
         // Load the project/dataflow graph data
-        console.log("Loading page data for project:", projectId, "page:", pageNodeId)
         const response = await fetch(`/api/dataflows/${projectId}`)
         if (response.ok) {
           const flow = await response.json()
-          console.log("Flow loaded:", flow)
           const graphData = flow.graphData
 
           // Initialize the store with the flow data
@@ -33,8 +31,6 @@ export default function PageEditorPage() {
 
           // Find the specific page node
           const page = graphData.nodes.find((n: Node) => n.id === pageNodeId)
-          console.log("Found page node:", page)
-          console.log("Page node puckData:", page?.data?.puckData)
           setPageNode(page || null)
         }
       } catch (error) {
