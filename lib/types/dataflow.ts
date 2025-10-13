@@ -24,7 +24,7 @@ export interface DataFlowGraph {
 }
 
 // Node type definitions
-export type NodeType = "data" | "httpRequest" | "select" | "inspect"
+export type NodeType = "data" | "httpRequest" | "select" | "inspect" | "page"
 
 // Specific node data types
 export type JsonPathRef = [{ id: string }, ...(string | number)[]]
@@ -52,6 +52,16 @@ export interface SelectNodeData {
 export interface InspectNodeData {
   label: string
   // Inspect node doesn't need configuration, it just visualizes input
+}
+
+export interface PageNodeData {
+  label: string
+  slug: string
+  puckData?: {
+    content: any[]
+    root: any
+    zones?: any
+  }
 }
 
 // Execution result types

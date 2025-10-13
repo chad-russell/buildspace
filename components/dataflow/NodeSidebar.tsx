@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import { Database, Globe, Filter, Eye } from "lucide-react"
+import { Database, Globe, Filter, Eye, FileText } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 const nodeDefinitions = [
@@ -32,6 +32,13 @@ const nodeDefinitions = [
     icon: Eye,
     description: "Visualize data",
     color: "bg-orange-500",
+  },
+  {
+    type: "page",
+    label: "Page",
+    icon: FileText,
+    description: "Application page",
+    color: "bg-purple-500",
   },
 ]
 

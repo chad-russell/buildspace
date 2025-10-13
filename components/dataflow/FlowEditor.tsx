@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useCallback, useRef, useEffect } from "react"
+import React, { useCallback, useRef, useEffect, useMemo } from "react"
 import ReactFlow, {
   Background,
   Controls,
@@ -31,6 +31,9 @@ export function FlowEditor() {
   const [reactFlowInstance, setReactFlowInstance] = React.useState<any>(null)
   const { applyEvent, start: startRun } = useRunStore()
   const [drawerOpen, setDrawerOpen] = React.useState(false)
+
+  // Memoize nodeTypes to prevent React Flow warning about recreating the object
+  const memoizedNodeTypes = useMemo(() => nodeTypes, [])
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault()
@@ -66,9 +69,15 @@ export function FlowEditor() {
         id: newId,
         type,
         position,
-        data: {
-          label: type.charAt(0).toUpperCase() + type.slice(1),
-        },
+        data:
+          type === "page"
+            ? {
+                label: "New Page",
+                slug: "new-page",
+              }
+            : {
+                label: type.charAt(0).toUpperCase() + type.slice(1),
+              },
       }
 
       addNode(newNode)
@@ -139,7 +148,7 @@ export function FlowEditor() {
             onDragOver={onDragOver}
             onNodeClick={onNodeClick}
             onPaneClick={onPaneClick}
-            nodeTypes={nodeTypes}
+            nodeTypes={memoizedNodeTypes}
             fitView
           >
             <Background />

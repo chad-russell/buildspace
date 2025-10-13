@@ -15,7 +15,7 @@ export function DataNode({ data, selected, id }: NodeProps) {
       title={data.label || "Data"}
       selected={selected}
       icon={<Database className="w-4 h-4" />}
-      showTargetHandle={false}
+      showTargetHandle={true}
       color="bg-green-500"
       status={(nodeState?.state || "idle") as any}
       durationMs={nodeState?.durationMs}

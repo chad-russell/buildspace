@@ -66,43 +66,7 @@ function DataNodeProperties({ node }: { node: any }) {
   const { updateNodeData } = useDataFlowStore()
   const [label, setLabel] = useState(node.data.label || "Data")
   const [jsonData, setJsonData] = useState(
-    JSON.stringify(node.data.jsonData || {
-      "users": [
-        {
-          "id": 1,
-          "name": "Alice",
-          "active": true,
-          "metadata": {
-            "role": "admin",
-            "permissions": ["read", "write", "delete"],
-            "settings": {
-              "theme": "dark",
-              "notifications": false,
-              "count": 42
-            }
-          }
-        },
-        {
-          "id": 2,
-          "name": "Bob",
-          "active": false,
-          "metadata": {
-            "role": "user",
-            "permissions": ["read"],
-            "settings": {
-              "theme": "light",
-              "notifications": true,
-              "count": null
-            }
-          }
-        }
-      ],
-      "config": {
-        "version": 3.14,
-        "enabled": true,
-        "features": ["auth", "api", "ui"]
-      }
-    }, null, 2)
+    JSON.stringify(node.data.jsonData || {}, null, 2)
   )
   const [error, setError] = useState("")
 

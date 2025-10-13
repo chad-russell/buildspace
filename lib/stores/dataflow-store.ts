@@ -11,6 +11,21 @@ import {
   applyEdgeChanges,
 } from "reactflow"
 
+// ensure any bogus handle ids ("null", "undefined", null, "") are removed
+function sanitizeHandleId(id: any): string | undefined {
+  if (id === undefined || id === null) return undefined
+  if (id === "null" || id === "undefined" || id === "") return undefined
+  return id as string
+}
+
+function sanitizeEdges(edges: Edge[]): Edge[] {
+  return (edges || []).map((e: any) => ({
+    ...e,
+    sourceHandle: sanitizeHandleId(e?.sourceHandle),
+    targetHandle: sanitizeHandleId(e?.targetHandle),
+  }))
+}
+
 interface DataFlowState {
   nodes: Node[]
   edges: Edge[]
@@ -19,7 +34,7 @@ interface DataFlowState {
   flowName: string
   isSaving: boolean
 
-  setFlowId: (id: string) => void
+  setFlowId: (id: string | null) => void
   setFlowName: (name: string) => void
   setNodes: (nodes: Node[]) => void
   setEdges: (edges: Edge[]) => void
@@ -33,6 +48,7 @@ interface DataFlowState {
   setIsSaving: (saving: boolean) => void
   reset: () => void
   ensureEdge: (source: string, target: string) => void
+  getPageDependencies: (pageNodeId: string) => Node[]
 }
 
 export const useDataFlowStore = create<DataFlowState>((set, get) => ({
@@ -49,7 +65,7 @@ export const useDataFlowStore = create<DataFlowState>((set, get) => ({
 
   setNodes: (nodes) => set({ nodes }),
 
-  setEdges: (edges) => set({ edges }),
+  setEdges: (edges) => set({ edges: sanitizeEdges(edges) }),
 
   onNodesChange: (changes) => {
     set({
@@ -58,14 +74,20 @@ export const useDataFlowStore = create<DataFlowState>((set, get) => ({
   },
 
   onEdgesChange: (changes) => {
+    const next = applyEdgeChanges(changes, get().edges)
     set({
-      edges: applyEdgeChanges(changes, get().edges),
+      edges: sanitizeEdges(next),
     })
   },
 
   onConnect: (connection) => {
+    const sanitized: Connection = {
+      ...connection,
+      sourceHandle: sanitizeHandleId((connection as any).sourceHandle),
+      targetHandle: sanitizeHandleId((connection as any).targetHandle),
+    }
     set({
-      edges: addEdge(connection, get().edges),
+      edges: addEdge(sanitized, get().edges),
     })
   },
 
@@ -123,6 +145,7 @@ export const useDataFlowStore = create<DataFlowState>((set, get) => ({
     if (existing) return
     
     // Check if adding this edge would create a cycle
+    // Do not set handle ids; let React Flow use defaults
     const newEdges = addEdge({ source, target }, get().edges)
     const nodes = get().nodes
     
@@ -139,7 +162,16 @@ export const useDataFlowStore = create<DataFlowState>((set, get) => ({
       return
     }
     
-    set({ edges: newEdges })
+    set({ edges: sanitizeEdges(newEdges) })
+  },
+
+  getPageDependencies: (pageNodeId) => {
+    const { nodes, edges } = get()
+    // Find all edges where the page node is the target
+    const incomingEdges = edges.filter((edge) => edge.target === pageNodeId)
+    // Get the source nodes
+    const sourceNodeIds = incomingEdges.map((edge) => edge.source)
+    return nodes.filter((node) => sourceNodeIds.includes(node.id))
   },
 }))
 

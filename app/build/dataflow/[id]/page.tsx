@@ -44,7 +44,13 @@ export default function DataFlowEditorPage() {
         setFlowName(flow.name)
         if (flow.graphData) {
           setNodes(flow.graphData.nodes || [])
-          setEdges(flow.graphData.edges || [])
+          // sanitize any legacy edges that might contain string "null"/"undefined" handle ids
+          const sanitizedEdges = (flow.graphData.edges || []).map((e: any) => ({
+            ...e,
+            sourceHandle: e.sourceHandle ?? undefined,
+            targetHandle: e.targetHandle ?? undefined,
+          }))
+          setEdges(sanitizedEdges)
         }
       }
     } catch (error) {
@@ -52,16 +58,16 @@ export default function DataFlowEditorPage() {
     }
   }
 
-  // Auto-save functionality
-  useEffect(() => {
-    const saveTimer = setTimeout(() => {
-      if (flowId && flowId !== "new" && nodes.length > 0) {
-        saveFlow()
-      }
-    }, 2000) // Auto-save after 2 seconds of inactivity
+  // // Auto-save functionality
+  // useEffect(() => {
+  //   const saveTimer = setTimeout(() => {
+  //     if (flowId && flowId !== "new" && nodes.length > 0) {
+  //       saveFlow()
+  //     }
+  //   }, 2000) // Auto-save after 2 seconds of inactivity
 
-    return () => clearTimeout(saveTimer)
-  }, [nodes, edges, flowName, flowId])
+  //   return () => clearTimeout(saveTimer)
+  // }, [nodes, edges, flowName, flowId])
 
   const saveFlow = async () => {
     if (!flowId || flowId === "new") return

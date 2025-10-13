@@ -553,7 +553,10 @@ function ReferenceChip({ reference, path, rootValue, onChange, readOnly, onDelet
   const [isHovered, setIsHovered] = useState(false)
   const ref = reference.$ref
   const sourceNodeId = ref[0]?.id
-  const refPath = ref.slice(1)
+  const refPath = React.useMemo(() => ref.slice(1), [ref])
+  
+  // Create stable string representation for dependency comparison
+  const refPathKey = React.useMemo(() => JSON.stringify(refPath), [refPath])
 
   // Format the reference path nicely
   const formatPath = () => {
@@ -584,7 +587,9 @@ function ReferenceChip({ reference, path, rootValue, onChange, readOnly, onDelet
         }))
       }
     }
-  }, [isHovered, sourceNodeId, refPath])
+    // Use refPathKey (string) instead of refPath (array) to avoid infinite re-renders
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHovered, sourceNodeId, refPathKey])
 
   const chip = (
     <span 
