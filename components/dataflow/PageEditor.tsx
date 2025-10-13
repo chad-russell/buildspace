@@ -40,6 +40,7 @@ export function PageEditor({
   )
   const allNodes = useDataFlowStore((state) => state.nodes)
   const edges = useDataFlowStore((state) => state.edges)
+  const updateNodeData = useDataFlowStore((state) => state.updateNodeData)
 
   // Initialize Puck data from page node
   useEffect(() => {
@@ -126,6 +127,9 @@ export function PageEditor({
 
       if (response.ok) {
         setHasChanges(false)
+        // Keep the in-memory store in sync so subsequent graph saves don't wipe puckData
+        updateNodeData(pageNodeId, { puckData })
+        console.log("Updated node data in store with puckData")
         // Could show a success toast here
       } else {
         console.error("Failed to save page design")

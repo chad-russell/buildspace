@@ -17,9 +17,13 @@ export function PageDesignCanvas({
   metadata,
   onChange,
 }: PageDesignCanvasProps) {
+  // Force Puck to remount when data changes externally
+  const dataKey = JSON.stringify(data.content)
+  
   return (
     <div className="w-full h-full">
       <Puck
+        key={dataKey}
         config={puckConfig}
         data={data}
         metadata={metadata}
