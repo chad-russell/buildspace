@@ -10,6 +10,7 @@ interface PageDesignCanvasProps {
   data: Data
   metadata: PuckMetadata
   onChange: (data: Data) => void
+  projectId: string
   // When this value changes, Puck is remounted. Parent should only
   // change it when external data is swapped in, not on each edit.
   resetKey?: string | number
@@ -19,12 +20,18 @@ export function PageDesignCanvas({
   data,
   metadata,
   onChange,
+  projectId,
   resetKey,
 }: PageDesignCanvasProps) {
+  const stateSchema = metadata.pageStateSchema || []
+
+  // Include schema length in key so Puck remounts when schema length changes
+  const stableKey = `${resetKey}-${stateSchema.length}`
+
   return (
     <div className="w-full h-full">
       <Puck
-        key={resetKey}
+        key={stableKey}
         config={puckConfig}
         data={data}
         metadata={metadata}

@@ -1,11 +1,14 @@
 import { ComponentConfig } from "@measured/puck"
 import { resolveDataPath, MarkedInput } from "../metadata"
 import { DataPathField } from "../fields/DataPathField"
+import { StateKeyField } from "../fields/StateKeyField"
+import { usePageState } from "../context/PageStateContext"
 
 export interface TextProps {
   text: string
-  useDataBinding: boolean
+  bindingType: "none" | "serverData" | "pageState"
   dataPath?: string
+  stateKey?: string
 }
 
 export const TextComponent: ComponentConfig<TextProps> = {
@@ -13,26 +16,39 @@ export const TextComponent: ComponentConfig<TextProps> = {
     text: {
       type: "textarea",
     },
-    useDataBinding: {
+    bindingType: {
       type: "radio",
       options: [
-        { label: "Static Text", value: false },
-        { label: "Bind to Data", value: true },
+        { label: "Static Text", value: "none" },
+        { label: "Server Data", value: "serverData" },
+        { label: "Page State", value: "pageState" },
       ],
     },
     dataPath: DataPathField,
+    stateKey: StateKeyField,
   },
   defaultProps: {
     text: "Enter your text here...",
-    useDataBinding: false,
+    bindingType: "none",
     dataPath: "",
+    stateKey: "",
   },
   // resolveData removed - was causing focus loss on input due to prop mutations
-  render: ({ text, useDataBinding, dataPath, puck }) => {
+  render: ({ text, bindingType, dataPath, stateKey, puck }) => {
     let displayText = text
     let debugInfo = null
 
-    if (useDataBinding && puck?.metadata) {
+    // Try to get page state (will be null in design mode)
+    let pageState: any = null
+    try {
+      const context = usePageState()
+      pageState = context.pageState
+    } catch {
+      // Not in PageStateProvider context (design-time)
+    }
+
+    // Server Data Binding
+    if (bindingType === "serverData" && puck?.metadata) {
       const markedInputs = (puck.metadata as any).markedInputs as Record<
         string,
         MarkedInput
@@ -47,7 +63,7 @@ export const TextComponent: ComponentConfig<TextProps> = {
         debugInfo = (
           <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
             <div className="font-medium text-yellow-800">
-              Data binding enabled but no path set
+              Server data binding enabled but no path set
             </div>
             <div className="mt-1 text-yellow-700">
               Available nodes: {availableNodes.join(", ")}
@@ -70,7 +86,7 @@ export const TextComponent: ComponentConfig<TextProps> = {
           debugInfo = (
             <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-xs">
               <div className="font-medium text-green-800">
-                ✓ Data bound to: {dataPath}
+                ✓ Server data bound to: {dataPath}
               </div>
             </div>
           )
@@ -95,6 +111,45 @@ export const TextComponent: ComponentConfig<TextProps> = {
             </div>
           )
         }
+      }
+    }
+
+    // Page State Binding
+    if (bindingType === "pageState") {
+      if (!stateKey) {
+        debugInfo = (
+          <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
+            <div className="font-medium text-yellow-800">
+              Page state binding enabled but no key selected
+            </div>
+          </div>
+        )
+      } else if (pageState) {
+        // Runtime: display actual state value
+        const stateValue = pageState[stateKey]
+        displayText =
+          stateValue !== undefined
+            ? typeof stateValue === "string"
+              ? stateValue
+              : JSON.stringify(stateValue, null, 2)
+            : `[${stateKey} not found]`
+        
+        debugInfo = (
+          <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+            <div className="font-medium text-blue-800">
+              ✓ Page state bound to: {stateKey}
+            </div>
+          </div>
+        )
+      } else {
+        // Design time: show binding info
+        debugInfo = (
+          <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded text-xs">
+            <div className="font-medium text-gray-800">
+              Bound to page state: {stateKey} (preview mode)
+            </div>
+          </div>
+        )
       }
     }
 

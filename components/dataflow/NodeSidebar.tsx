@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import { Database, Globe, Filter, Eye, FileText } from "lucide-react"
+import { Database, Globe, Filter, Eye, FileText, Zap } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 const nodeDefinitions = [
@@ -39,6 +39,13 @@ const nodeDefinitions = [
     icon: FileText,
     description: "Application page",
     color: "bg-purple-500",
+  },
+  {
+    type: "actionTrigger",
+    label: "Action Trigger",
+    icon: Zap,
+    description: "Execute server action",
+    color: "bg-orange-500",
   },
 ]
 

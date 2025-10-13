@@ -2,14 +2,17 @@
 
 import React, { useState, useEffect, useRef } from "react"
 import { Node } from "reactflow"
-import { Data } from "@measured/puck"
+import { Data, Render } from "@measured/puck"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Save } from "lucide-react"
+import { ArrowLeft, Save, Eye, EyeOff } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { DependenciesSidebar } from "./DependenciesSidebar"
 import { PageDesignCanvas } from "./PageDesignCanvas"
 import { createPuckMetadata } from "@/lib/puck/metadata"
 import { useDataFlowStore } from "@/lib/stores/dataflow-store"
+import { PageStateProvider } from "@/lib/puck/context/PageStateContext"
+import { puckConfig } from "@/lib/puck/config"
+import "@measured/puck/puck.css"
 
 interface PageEditorProps {
   projectId: string
@@ -35,6 +38,9 @@ export function PageEditor({
   const isInitialMount = useRef(true)
   // Keep a stable key that only changes when we load new puckData from the page node
   const [resetKey, setResetKey] = useState(0)
+  // Preview mode state
+  const [isPreviewMode, setIsPreviewMode] = useState(false)
+  const [savedPuckData, setSavedPuckData] = useState<Data>(defaultPuckData)
 
   // Get live dependencies and ALL nodes from the store
   const dependencies = useDataFlowStore((state) =>
@@ -48,6 +54,7 @@ export function PageEditor({
   useEffect(() => {
     if (pageNode?.data?.puckData) {
       setPuckData(pageNode.data.puckData)
+      setSavedPuckData(pageNode.data.puckData)
       // Bump reset key so Puck remounts only when external data is swapped in
       setResetKey((k) => k + 1)
     }
@@ -98,7 +105,14 @@ export function PageEditor({
 
   // Create metadata from ALL nodes (not just dependencies)
   // This allows resolving references to nodes that aren't direct dependencies
-  const metadata = createPuckMetadata(allNodes)
+  // Also pass the page's state schema
+  // IMPORTANT: Get the current page node from the store, not the prop, so we get live updates
+  const currentPageNode = allNodes.find((n) => n.id === pageNodeId)
+  const pageStateSchema = currentPageNode?.data?.pageState || []
+  console.log('PageEditor - currentPageNode from store:', currentPageNode)
+  console.log('PageEditor - pageStateSchema:', pageStateSchema)
+  const metadata = createPuckMetadata(allNodes, pageStateSchema)
+  console.log('PageEditor - metadata:', metadata)
 
   const handleBack = () => {
     if (hasChanges) {
@@ -131,6 +145,7 @@ export function PageEditor({
 
       if (response.ok) {
         setHasChanges(false)
+        setSavedPuckData(puckData)
         // Keep the in-memory store in sync so subsequent graph saves don't wipe puckData
         updateNodeData(pageNodeId, { puckData })
         // Could show a success toast here
@@ -146,6 +161,22 @@ export function PageEditor({
     }
   }
 
+  const handleTogglePreview = () => {
+    if (!isPreviewMode) {
+      // Entering preview mode - use the saved data from the current page node in store
+      const currentPageNode = allNodes.find((n) => n.id === pageNodeId)
+      if (currentPageNode?.data?.puckData) {
+        setSavedPuckData(currentPageNode.data.puckData)
+      }
+    }
+    setIsPreviewMode(!isPreviewMode)
+  }
+
+  // Check if page has been saved at least once
+  const hasSavedData = pageNode?.data?.puckData && 
+    (pageNode.data.puckData.content.length > 0 || 
+     Object.keys(pageNode.data.puckData.root.props || {}).length > 0)
+
   return (
     <div className="h-screen w-full flex flex-col">
       <div className="h-14 border-b flex items-center justify-between px-4 bg-white">
@@ -156,10 +187,12 @@ export function PageEditor({
           </Button>
           <div className="h-6 w-px bg-gray-300" />
           <h1 className="text-lg font-semibold">
-            {pageNode?.data?.label || "Page Editor"}
+            {currentPageNode?.data?.label || pageNode?.data?.label || "Page Editor"}
           </h1>
-          {pageNode?.data?.slug && (
-            <span className="text-sm text-gray-500">/{pageNode.data.slug}</span>
+          {(currentPageNode?.data?.slug || pageNode?.data?.slug) && (
+            <span className="text-sm text-gray-500">
+              /{currentPageNode?.data?.slug || pageNode?.data?.slug}
+            </span>
           )}
         </div>
         <div className="flex items-center gap-2">
@@ -176,24 +209,55 @@ export function PageEditor({
             variant="outline"
             size="sm"
             onClick={handleSave}
-            disabled={!hasChanges || isSaving}
+            disabled={!hasChanges || isSaving || isPreviewMode}
           >
             <Save className="w-4 h-4 mr-2" />
             Save Page Design
+          </Button>
+          <Button
+            variant={isPreviewMode ? "default" : "outline"}
+            size="sm"
+            onClick={handleTogglePreview}
+            disabled={!hasSavedData}
+          >
+            {isPreviewMode ? (
+              <>
+                <EyeOff className="w-4 h-4 mr-2" />
+                Exit Preview
+              </>
+            ) : (
+              <>
+                <Eye className="w-4 h-4 mr-2" />
+                Preview
+              </>
+            )}
           </Button>
         </div>
       </div>
 
       <div className="flex-1 flex overflow-hidden">
-        <DependenciesSidebar pageNodeId={pageNodeId} />
-        <div className="flex-1">
-          <PageDesignCanvas
-            data={puckData}
-            metadata={metadata}
-            onChange={handlePuckChange}
-            resetKey={resetKey}
-          />
-        </div>
+        {isPreviewMode ? (
+          /* Preview mode - full-screen interactive preview */
+          <PageStateProvider stateSchema={pageStateSchema} projectId={projectId}>
+            <div className="w-full h-full overflow-auto bg-white">
+              <Render config={puckConfig} data={savedPuckData} metadata={metadata} />
+            </div>
+          </PageStateProvider>
+        ) : (
+          /* Edit mode - Puck editor with sidebar */
+          <PageStateProvider stateSchema={pageStateSchema} projectId={projectId}>
+            <DependenciesSidebar pageNodeId={pageNodeId} />
+            <div className="flex-1">
+              <PageDesignCanvas
+                data={puckData}
+                metadata={metadata}
+                onChange={handlePuckChange}
+                projectId={projectId}
+                resetKey={resetKey}
+              />
+            </div>
+          </PageStateProvider>
+        )}
       </div>
     </div>
   )

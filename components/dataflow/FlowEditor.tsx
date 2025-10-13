@@ -74,6 +74,13 @@ export function FlowEditor() {
             ? {
                 label: "New Page",
                 slug: "new-page",
+                pageState: [],
+              }
+            : type === "actionTrigger"
+            ? {
+                label: "Action Trigger",
+                actionName: "",
+                namedInputs: [],
               }
             : {
                 label: type.charAt(0).toUpperCase() + type.slice(1),

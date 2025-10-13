@@ -3,6 +3,7 @@ import { HttpRequestNode } from "./HttpRequestNode"
 import { SelectNode } from "./SelectNode"
 import { InspectNode } from "./InspectNode"
 import { PageNode } from "./PageNode"
+import { ActionTriggerNode } from "./ActionTriggerNode"
 
 export const nodeTypes = {
   data: DataNode,
@@ -10,7 +11,8 @@ export const nodeTypes = {
   select: SelectNode,
   inspect: InspectNode,
   page: PageNode,
+  actionTrigger: ActionTriggerNode,
 }
 
-export { DataNode, HttpRequestNode, SelectNode, InspectNode, PageNode }
+export { DataNode, HttpRequestNode, SelectNode, InspectNode, PageNode, ActionTriggerNode }
 

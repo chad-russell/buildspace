@@ -1,12 +1,15 @@
 import { ComponentConfig } from "@measured/puck"
 import { resolveDataPath, MarkedInput } from "../metadata"
 import { DataPathField } from "../fields/DataPathField"
+import { StateKeyField } from "../fields/StateKeyField"
+import { usePageState } from "../context/PageStateContext"
 
 export interface HeadingProps {
   text: string
   level: "1" | "2" | "3" | "4" | "5" | "6"
-  useDataBinding: boolean
+  bindingType: "none" | "serverData" | "pageState"
   dataPath?: string
+  stateKey?: string
 }
 
 export const HeadingComponent: ComponentConfig<HeadingProps> = {
@@ -25,27 +28,40 @@ export const HeadingComponent: ComponentConfig<HeadingProps> = {
         { label: "H6", value: "6" },
       ],
     },
-    useDataBinding: {
+    bindingType: {
       type: "radio",
       options: [
-        { label: "Static Text", value: false },
-        { label: "Bind to Data", value: true },
+        { label: "Static Text", value: "none" },
+        { label: "Server Data", value: "serverData" },
+        { label: "Page State", value: "pageState" },
       ],
     },
     dataPath: DataPathField,
+    stateKey: StateKeyField,
   },
   defaultProps: {
     text: "Heading",
     level: "1",
-    useDataBinding: false,
+    bindingType: "none",
     dataPath: "",
+    stateKey: "",
   },
   // resolveData removed - was causing focus loss on input due to prop mutations
-  render: ({ text, level, useDataBinding, dataPath, puck }) => {
+  render: ({ text, level, bindingType, dataPath, stateKey, puck }) => {
     let displayText = text
     let debugInfo = null
 
-    if (useDataBinding && puck?.metadata) {
+    // Try to get page state (will be null in design mode)
+    let pageState: any = null
+    try {
+      const context = usePageState()
+      pageState = context.pageState
+    } catch {
+      // Not in PageStateProvider context (design-time)
+    }
+
+    // Server Data Binding
+    if (bindingType === "serverData" && puck?.metadata) {
       const markedInputs = (puck.metadata as any).markedInputs as Record<
         string,
         MarkedInput
@@ -61,7 +77,7 @@ export const HeadingComponent: ComponentConfig<HeadingProps> = {
           
           debugInfo = (
             <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-xs font-normal">
-              ✓ Bound to: {dataPath}
+              ✓ Server data bound to: {dataPath}
             </div>
           )
         } else {
@@ -71,6 +87,39 @@ export const HeadingComponent: ComponentConfig<HeadingProps> = {
             </div>
           )
         }
+      }
+    }
+
+    // Page State Binding
+    if (bindingType === "pageState") {
+      if (!stateKey) {
+        debugInfo = (
+          <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs font-normal">
+            Page state binding enabled but no key selected
+          </div>
+        )
+      } else if (pageState) {
+        // Runtime: display actual state value
+        const stateValue = pageState[stateKey]
+        displayText =
+          stateValue !== undefined
+            ? typeof stateValue === "string"
+              ? stateValue
+              : JSON.stringify(stateValue)
+            : `[${stateKey} not found]`
+        
+        debugInfo = (
+          <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs font-normal">
+            ✓ Page state bound to: {stateKey}
+          </div>
+        )
+      } else {
+        // Design time: show binding info
+        debugInfo = (
+          <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded text-xs font-normal">
+            Bound to page state: {stateKey} (preview mode)
+          </div>
+        )
       }
     }
 

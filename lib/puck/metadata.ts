@@ -1,4 +1,5 @@
 import { Node } from "reactflow"
+import { PageStateField } from "@/lib/types/dataflow"
 
 export interface MarkedInput {
   id: string
@@ -9,13 +10,17 @@ export interface MarkedInput {
 
 export interface PuckMetadata {
   markedInputs: Record<string, MarkedInput>
+  pageStateSchema?: PageStateField[]
 }
 
 /**
  * Formats dependency nodes into Puck metadata structure
  * This allows Puck components to access marked input data via puck.metadata
  */
-export function createPuckMetadata(dependencies: Node[]): PuckMetadata {
+export function createPuckMetadata(
+  dependencies: Node[],
+  pageStateSchema?: PageStateField[]
+): PuckMetadata {
   const markedInputs: Record<string, MarkedInput> = {}
 
   dependencies.forEach((node) => {
@@ -27,7 +32,7 @@ export function createPuckMetadata(dependencies: Node[]): PuckMetadata {
     }
   })
 
-  return { markedInputs }
+  return { markedInputs, pageStateSchema }
 }
 
 /**
