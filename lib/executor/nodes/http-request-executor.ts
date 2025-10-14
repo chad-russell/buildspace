@@ -1,5 +1,16 @@
 import { DataFlowNode } from "@/lib/types/dataflow"
 
+/**
+ * Execute an HTTP Request node.
+ * 
+ * **Input Consumption**: IGNORES inputs (config-driven).
+ * 
+ * **Behavior**: Makes an HTTP request using the configured URL, method, headers,
+ * body, and query parameters. Configuration values may contain $ref references
+ * (resolved before this executor runs).
+ * 
+ * **Output**: Parsed JSON response if content-type is application/json, otherwise text.
+ */
 export async function executeHttpRequestNode(
   node: DataFlowNode,
   context: Map<string, any>

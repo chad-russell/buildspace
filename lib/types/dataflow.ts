@@ -10,6 +10,10 @@ export interface DataFlowNode {
   data: Record<string, any>
 }
 
+export function isExecutionRoot(nodeType: string) {
+  return nodeType === "page" || nodeType === "actionTrigger"
+}
+
 export interface DataFlowEdge {
   id: string
   source: string
@@ -24,7 +28,7 @@ export interface DataFlowGraph {
 }
 
 // Node type definitions
-export type NodeType = "data" | "httpRequest" | "select" | "inspect" | "page" | "actionTrigger" | "setValue"
+export type NodeType = "data" | "httpRequest" | "inspect" | "page" | "actionTrigger" | "setValue"
 
 // Specific node data types
 export type JsonPathRef = [{ id: string }, ...(string | number)[]]
@@ -42,12 +46,6 @@ export interface HttpRequestNodeData {
   body?: string
   queryParams: Record<string, string>
   previewData?: any // Stores fetched preview response for design-time binding
-}
-
-export interface SelectNodeData {
-  label: string
-  fields: string[] // Array of JSON paths to select
-  renameMap?: Record<string, string> // Optional field renaming
 }
 
 export interface InspectNodeData {

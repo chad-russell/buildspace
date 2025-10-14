@@ -1,41 +1,34 @@
 import { ComponentConfig } from "@measured/puck"
 import { resolveDataPath, MarkedInput } from "../metadata"
-import { DataPathField } from "../fields/DataPathField"
-import { StateKeyField } from "../fields/StateKeyField"
+import { TextBindingField, TextBindingValue } from "../fields/TextBindingField"
 import { usePageState } from "../context/PageStateContext"
 
 export interface TextProps {
-  text: string
-  bindingType: "none" | "serverData" | "pageState"
-  dataPath?: string
-  stateKey?: string
+  binding: TextBindingValue
 }
 
 export const TextComponent: ComponentConfig<TextProps> = {
   fields: {
-    text: {
-      type: "textarea",
-    },
-    bindingType: {
-      type: "radio",
-      options: [
-        { label: "Static Text", value: "none" },
-        { label: "Server Data", value: "serverData" },
-        { label: "Page State", value: "pageState" },
-      ],
-    },
-    dataPath: DataPathField,
-    stateKey: StateKeyField,
+    binding: TextBindingField,
   },
   defaultProps: {
-    text: "Enter your text here...",
-    bindingType: "none",
-    dataPath: "",
-    stateKey: "",
+    binding: {
+      bindingType: "none",
+      text: "Enter your text here...",
+      dataPath: "",
+      stateKey: "",
+    },
   },
   // resolveData removed - was causing focus loss on input due to prop mutations
-  render: ({ text, bindingType, dataPath, stateKey, puck }) => {
-    let displayText = text
+  render: ({ binding, puck }) => {
+    const { bindingType, text, dataPath, stateKey } = binding || {
+      bindingType: "none",
+      text: "",
+      dataPath: "",
+      stateKey: "",
+    }
+
+    let displayText = text || ""
     let debugInfo = null
 
     // Try to get page state (will be null in design mode)
@@ -43,7 +36,7 @@ export const TextComponent: ComponentConfig<TextProps> = {
     try {
       const context = usePageState()
       pageState = context.pageState
-    } catch {
+    } catch (error) {
       // Not in PageStateProvider context (design-time)
     }
 
@@ -127,6 +120,7 @@ export const TextComponent: ComponentConfig<TextProps> = {
       } else if (pageState) {
         // Runtime: display actual state value
         const stateValue = pageState[stateKey]
+        
         displayText =
           stateValue !== undefined
             ? typeof stateValue === "string"
@@ -134,13 +128,26 @@ export const TextComponent: ComponentConfig<TextProps> = {
               : JSON.stringify(stateValue, null, 2)
             : `[${stateKey} not found]`
         
-        debugInfo = (
-          <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
-            <div className="font-medium text-blue-800">
-              ✓ Page state bound to: {stateKey}
+        if (stateValue !== undefined) {
+          debugInfo = (
+            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+              <div className="font-medium text-blue-800">
+                ✓ Page state bound to: {stateKey}
+              </div>
             </div>
-          </div>
-        )
+          )
+        } else {
+          debugInfo = (
+            <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs">
+              <div className="font-medium text-red-800">
+                ✗ Key "{stateKey}" not found in page state
+              </div>
+              <div className="mt-1 text-red-700 text-xs">
+                Available keys: {Object.keys(pageState).join(", ") || "(none)"}
+              </div>
+            </div>
+          )
+        }
       } else {
         // Design time: show binding info
         debugInfo = (

@@ -39,10 +39,27 @@ Core Principles
 - The editor shows a single unlabeled source and target handle on nodes by default, matching runtime semantics.
 - Field‑level wiring is performed by dragging paths (via JsonComposer) to create references; the editor automatically creates a plain edge between the referenced node and the consumer to reflect the dependency.
 
+Execution Contexts and Boundaries
+9) Execution Roots define computation contexts
+- Page nodes and ActionTrigger nodes are "execution roots" that define distinct execution contexts.
+- Page Node: Root for "Page Load" context—computes all data needed for initial render.
+- ActionTrigger Node: Root for "Action" context—performs mutations/side-effects from user interactions.
+
+10) Dependency traces respect boundaries
+- When tracing dependencies from one execution root, if another root is encountered, the trace STOPS.
+- The executor reads the boundary root's cached value from runtime context instead of re-computing its dependencies.
+- Example: An action trace stops at the Page node—it reads current page state without re-executing HTTP requests.
+
+11) Efficient action execution
+- Actions operate only on nodes directly involved in their logic (e.g., SetValue).
+- Page state is already in memory with current runtime values.
+- No unnecessary re-execution of data fetching or transformation nodes.
+
+See EXECUTION-MODEL.md for detailed documentation of execution roots and boundaries.
+
 Node Semantics
 - DataNode: Produces its configured JSON after resolving embedded references.
 - HttpRequestNode: Produces the parsed response value; configuration (URL, body, headers) may use references.
-- SelectNode: Requires one input; projects/renames fields from the input value; outputs the result.
 - PageNode: Produces the resolved page state value (from its schema/object), used both at render time and during action flows.
 - SetValueNode (effectful): Mutates a path in another node’s value in the runtime context and returns the value written.
 - ActionTriggerNode: Consumes upstream values during an action; the action flow’s final output is the updated Page node value when present.

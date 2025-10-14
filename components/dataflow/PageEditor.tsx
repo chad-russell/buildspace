@@ -12,6 +12,7 @@ import { createPuckMetadata } from "@/lib/puck/metadata"
 import { useDataFlowStore } from "@/lib/stores/dataflow-store"
 import { PageStateProvider } from "@/lib/puck/context/PageStateContext"
 import { puckConfig } from "@/lib/puck/config"
+import { resolvePageState } from "@/lib/executor/page-state-resolver"
 import "@measured/puck/puck.css"
 
 interface PageEditorProps {
@@ -41,6 +42,8 @@ export function PageEditor({
   // Preview mode state
   const [isPreviewMode, setIsPreviewMode] = useState(false)
   const [savedPuckData, setSavedPuckData] = useState<Data>(defaultPuckData)
+  // Resolved page state for preview
+  const [resolvedState, setResolvedState] = useState<Record<string, any>>({})
 
   // Get live dependencies and ALL nodes from the store
   const dependencies = useDataFlowStore((state) =>
@@ -110,6 +113,22 @@ export function PageEditor({
   const currentPageNode = allNodes.find((n) => n.id === pageNodeId)
   const pageStateSchema = currentPageNode?.data?.pageState || []
   const metadata = createPuckMetadata(allNodes, pageStateSchema)
+
+  // Resolve page state when nodes/edges change (for preview mode)
+  useEffect(() => {
+    const resolveState = async () => {
+      try {
+        const graphData = { nodes: allNodes, edges }
+        const initialState = await resolvePageState(graphData, pageNodeId)
+        setResolvedState(initialState)
+      } catch (error) {
+        console.error("Error resolving page state:", error)
+        setResolvedState({})
+      }
+    }
+    
+    resolveState()
+  }, [allNodes, edges, pageNodeId])
 
   const handleBack = () => {
     if (hasChanges) {
@@ -235,14 +254,14 @@ export function PageEditor({
       <div className="flex-1 flex overflow-hidden">
         {isPreviewMode ? (
           /* Preview mode - full-screen interactive preview */
-          <PageStateProvider stateSchema={pageStateSchema} projectId={projectId}>
+          <PageStateProvider initialState={resolvedState} projectId={projectId}>
             <div className="w-full h-full overflow-auto bg-white">
               <Render config={puckConfig} data={savedPuckData} metadata={metadata} />
             </div>
           </PageStateProvider>
         ) : (
           /* Edit mode - Puck editor with sidebar */
-          <PageStateProvider stateSchema={pageStateSchema} projectId={projectId}>
+          <PageStateProvider initialState={resolvedState} projectId={projectId}>
             <DependenciesSidebar pageNodeId={pageNodeId} />
             <div className="flex-1">
               <PageDesignCanvas

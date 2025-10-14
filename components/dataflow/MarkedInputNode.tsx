@@ -49,33 +49,6 @@ export function MarkedInputNode({ node }: MarkedInputNodeProps) {
       case "httpRequest":
         return <HttpRequestMarkedNode node={node} />
 
-      case "select":
-        return (
-          <BaseNode
-            title={node.data.label || "Select"}
-            icon={<Filter className="w-4 h-4" />}
-            color="bg-purple-500"
-            showTargetHandle={false}
-            showSourceHandle={false}
-            nodeId={node.id}
-          >
-            <div className="text-xs text-gray-600">
-              <div className="font-medium mb-1">Selected Fields</div>
-              {node.data.fields && node.data.fields.length > 0 ? (
-                <ul className="space-y-1">
-                  {node.data.fields.map((field: string, idx: number) => (
-                    <li key={idx} className="font-mono text-xs">
-                      {field}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <div className="text-gray-400">No fields selected</div>
-              )}
-            </div>
-          </BaseNode>
-        )
-
       case "inspect":
         return (
           <BaseNode

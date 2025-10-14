@@ -7,6 +7,7 @@ import "@measured/puck/puck.css"
 import { puckConfig } from "@/lib/puck/config"
 import { PageStateProvider } from "@/lib/puck/context/PageStateContext"
 import { createPuckMetadata } from "@/lib/puck/metadata"
+import { resolvePageState } from "@/lib/executor/page-state-resolver"
 
 export default function PublishedPage() {
   const params = useParams()
@@ -14,7 +15,7 @@ export default function PublishedPage() {
   const slug = params.slug as string
 
   const [pageData, setPageData] = useState<Data | null>(null)
-  const [stateSchema, setStateSchema] = useState<any[]>([])
+  const [resolvedState, setResolvedState] = useState<Record<string, any>>({})
   const [metadata, setMetadata] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -40,15 +41,18 @@ export default function PublishedPage() {
           throw new Error(`Page with slug "${slug}" not found`)
         }
 
-        // Extract puckData and state schema
+        // Extract puckData
         const puckData = pageNode.data.puckData || { content: [], root: {} }
         const pageStateSchema = pageNode.data.pageState || []
+
+        // Resolve the page state by executing dependencies
+        const initialState = await resolvePageState(graphData, pageNode.id)
 
         // Create metadata from all nodes
         const puckMetadata = createPuckMetadata(graphData.nodes, pageStateSchema)
 
         setPageData(puckData)
-        setStateSchema(pageStateSchema)
+        setResolvedState(initialState)
         setMetadata(puckMetadata)
       } catch (err) {
         console.error("Error loading page data:", err)
@@ -80,7 +84,7 @@ export default function PublishedPage() {
   }
 
   return (
-    <PageStateProvider stateSchema={stateSchema} projectId={projectId}>
+    <PageStateProvider initialState={resolvedState} projectId={projectId}>
       <div className="w-full min-h-screen">
         <Render config={puckConfig} data={pageData} />
       </div>

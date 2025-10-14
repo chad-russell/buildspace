@@ -3,6 +3,16 @@ import { isObjectLike, getAtPath } from "@/lib/json/path"
 import type { JsonPathRef } from "@/lib/types/dataflow"
 import { isRef } from "@/lib/json/path"
 
+/**
+ * Execute a Data node.
+ * 
+ * **Input Consumption**: IGNORES inputs (pure config-driven).
+ * 
+ * **Behavior**: Returns the configured JSON data (`node.data.jsonData`) after
+ * resolving any embedded $ref references against the execution context.
+ * 
+ * **Output**: The fully resolved JSON value.
+ */
 export async function executeDataNode(
   node: DataFlowNode,
   context: Map<string, any>

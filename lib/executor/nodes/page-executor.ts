@@ -2,6 +2,20 @@ import { DataFlowNode } from "@/lib/types/dataflow"
 import { isRef, getAtPath } from "@/lib/json/path"
 import type { JsonPathRef } from "@/lib/types/dataflow"
 
+/**
+ * Execute a Page node.
+ * 
+ * **Input Consumption**: IGNORES inputs (state schema-driven).
+ * 
+ * **Behavior**: Returns the resolved page state value. The `node.data.pageState`
+ * configuration defines the state schema (array or object format), and any embedded
+ * $ref references are resolved against the execution context.
+ * 
+ * **Output**: The fully resolved page state object.
+ * 
+ * **Note**: During action flows, this output may be mutated by SetValue nodes
+ * and the updated state is returned as the action result.
+ */
 export async function executePageNode(
   node: DataFlowNode,
   context: Map<string, any>

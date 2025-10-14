@@ -10,6 +10,10 @@ export async function POST(
 ) {
   try {
     const { id, actionName } = params
+    
+    // Parse request body to get current page state
+    const body = await request.json()
+    const currentPageState = body.currentPageState as Record<string, any> | undefined
 
     // Load the dataflow from the database
     const [dataflow] = await db
@@ -37,10 +41,13 @@ export async function POST(
       )
     }
 
-    // Execute the action flow starting from the trigger node
+    console.log('[Action API] Received current page state:', currentPageState)
+
+    // Execute the action flow starting from the trigger node with current page state
     const result = await executeActionFlow(
       graphData,
-      actionTriggerNode.id
+      actionTriggerNode.id,
+      currentPageState
     )
 
     if (result.success) {

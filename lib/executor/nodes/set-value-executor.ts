@@ -2,6 +2,21 @@ import { DataFlowNode } from "@/lib/types/dataflow"
 import { isRef, getAtPath, setAtPath } from "@/lib/json/path"
 import type { JsonPathRef } from "@/lib/types/dataflow"
 
+/**
+ * Execute a SetValue node (EFFECTFUL).
+ * 
+ * **Input Consumption**: IGNORES inputs (uses references).
+ * 
+ * **Behavior**: Mutates a path within another node's value in the execution context.
+ * - `node.data.target`: $ref pointing to a path in another node (e.g., Page state)
+ * - `node.data.value`: Value expression to write (literal or $ref)
+ * - The target node's value is updated in place in the context map
+ * 
+ * **Output**: Returns the value that was written.
+ * 
+ * **Side Effect**: This is the ONLY node that mutates context. The mutation allows
+ * Page state updates during action flows.
+ */
 export async function executeSetValueNode(
   node: DataFlowNode,
   context: Map<string, any>

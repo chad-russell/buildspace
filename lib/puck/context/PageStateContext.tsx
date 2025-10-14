@@ -1,7 +1,6 @@
 "use client"
 
 import React, { createContext, useContext, useState, useCallback } from "react"
-import { PageStateField } from "@/lib/types/dataflow"
 
 interface PageStateContextValue {
   pageState: Record<string, any>
@@ -13,23 +12,22 @@ const PageStateContext = createContext<PageStateContextValue | null>(null)
 
 interface PageStateProviderProps {
   children: React.ReactNode
-  stateSchema: PageStateField[]
+  initialState: Record<string, any>
   projectId: string
 }
 
 export function PageStateProvider({
   children,
-  stateSchema,
+  initialState,
   projectId,
 }: PageStateProviderProps) {
-  // Initialize state from schema defaults
-  const [pageState, setPageState] = useState<Record<string, any>>(() => {
-    const initialState: Record<string, any> = {}
-    stateSchema.forEach((field) => {
-      initialState[field.key] = field.defaultValue
-    })
-    return initialState
-  })
+  // Initialize state from the resolved initial state
+  const [pageState, setPageState] = useState<Record<string, any>>(initialState)
+
+  // Update internal state when initialState prop changes (e.g., after async resolution)
+  React.useEffect(() => {
+    setPageState(initialState)
+  }, [initialState])
 
   const updateState = useCallback((updates: Partial<Record<string, any>>) => {
     setPageState((prev) => ({ ...prev, ...updates }))
@@ -39,6 +37,7 @@ export function PageStateProvider({
     async (actionName: string) => {
       try {
         console.log('[PageState] Triggering action:', actionName)
+        console.log('[PageState] Current page state:', pageState)
         const response = await fetch(
           `/api/dataflows/${projectId}/actions/${actionName}`,
           {
@@ -46,7 +45,7 @@ export function PageStateProvider({
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({}),
+            body: JSON.stringify({ currentPageState: pageState }),
           }
         )
 
@@ -73,7 +72,7 @@ export function PageStateProvider({
         }
       }
     },
-    [projectId, updateState]
+    [projectId, pageState, updateState]
   )
 
   return (

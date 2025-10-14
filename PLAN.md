@@ -1,45 +1,44 @@
 Graph Alignment Plan (Single‑Value Node Model)
 See docs/GRAPH-DESIGN.md for the full design. This section lists concrete steps to align the current app with that design.
 
-Short‑Term (1–2 days)
+Sprint 1 – Completed ✅
 1) PageNode: single unlabeled output
-   - Remove dual “Data/State” source handles in `components/dataflow/nodes/PageNode.tsx`.
-   - Use default BaseNode handles (unlabeled left target, right source).
-   - Keep the “Page State” editor section as is.
+   - ✅ Removed dual "Data/State" source handles in `components/dataflow/nodes/PageNode.tsx`.
+   - ✅ Uses default BaseNode handles (unlabeled left target, right source).
+   - ✅ "Page State" editor section remains unchanged.
 
 2) Labeling/Copy updates
-   - Avoid the words “Data” vs “State” on ports. Use “Output” only if needed.
-   - Update any UI hints/tooltips to describe “full value output” semantics.
+   - ✅ Avoided "Data" vs "State" terminology on ports.
+   - ✅ Updated UI hints in DataNode and ActionTriggerNode to describe full value output semantics.
 
 3) Doc surfacing
-   - Link to `docs/GRAPH-DESIGN.md` from the README and internal help.
+   - ✅ Linked to `docs/GRAPH-DESIGN.md` from README.
 
-4) Ensure edges are handle‑agnostic at runtime (already true)
-   - Confirm executor ignores handle ids for inputs (it does), keeping single‑value semantics.
+4) Visual affordances
+   - ✅ BaseNode hover effects (scale + ring) for all handles.
+   - ✅ Hover-only "Output" caption on default source handle.
 
-5) SetValue guardrails (already in place)
-   - Disallow setting an entire node root; enforce non‑empty path (already implemented).
+5) Runtime verification
+   - ✅ Confirmed executor ignores handle ids for inputs, keeping single‑value semantics.
+   - ✅ SetValue guardrails enforce non‑empty path (already implemented).
 
-Medium‑Term (1–2 weeks)
+Medium‑Term (In Progress)
 1) References-first authoring
-   - In all node UIs that accept JSON, ensure `JsonComposer` drag‑to‑reference UX is consistent, and that creating a reference also ensures a plain edge from source → consumer for dependency clarity.
+   - ✅ DataNode, PageNode, SetValueNode all use `JsonComposer` with `ensureEdge` callback.
+   - Verified: all JSON-accepting nodes follow reference-first pattern.
 
 2) Executor: inputs API prepped for future ports
-   - Add an optional helper `getNodeInputsByHandle(...)` in the executor that groups inputs by `targetHandle`. Keep current `getNodeInputs(...)` as the default. Do not switch nodes yet; just stage the utility and unit tests.
+   - Add `getNodeInputsByHandle(...)` helper that groups inputs by `targetHandle`.
+   - Keep current `getNodeInputs(...)` as default; no nodes switched yet.
+   - Add unit tests for the new utility.
 
-3) Node docs/specs
-   - Document each node’s input behavior (e.g., Select consumes first input; others ignore inputs).
-   - Document which fields accept references and how they resolve.
+3) Node executor documentation
+   - Add JSDoc to each node executor describing input consumption pattern.
+   - Document which executors ignore inputs vs consume them.
 
 4) Action flows & Page synchronization
-   - Keep current behavior where action result prefers the Page node value if present.
-   - Add a brief in‑product explanation near Action Trigger nodes.
-
-5) Visual affordances
-   - Make default unlabeled handles slightly more visible on hover; keep labels off by default.
-
-6) Optional: Introduce passive “Output” label style
-   - Non‑interactive caption next to the right handle to reduce ambiguity for new users, gated behind a feature flag.
+   - ✅ Current behavior: action result prefers Page node value when present.
+   - ✅ ActionTriggerNode shows explanation of this behavior.
 
 Future (behind a flag)
 1) Labeled multi‑port nodes

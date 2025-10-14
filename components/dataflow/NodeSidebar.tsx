@@ -20,13 +20,6 @@ const nodeDefinitions = [
     color: "bg-blue-500",
   },
   {
-    type: "select",
-    label: "Select",
-    icon: Filter,
-    description: "Pick JSON fields",
-    color: "bg-purple-500",
-  },
-  {
     type: "inspect",
     label: "Inspect",
     icon: Eye,

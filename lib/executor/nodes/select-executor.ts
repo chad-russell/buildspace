@@ -1,5 +1,16 @@
 import { DataFlowNode } from "@/lib/types/dataflow"
 
+/**
+ * Execute a Select node.
+ * 
+ * **Input Consumption**: CONSUMES FIRST INPUT ONLY.
+ * 
+ * **Behavior**: Projects/renames fields from the input object based on the configured
+ * `fields` array and optional `renameMap`. Uses dot notation for nested field access.
+ * 
+ * **Output**: A new object containing only the selected fields (with optional renames).
+ * If no fields are configured, passes through the input unchanged.
+ */
 export async function executeSelectNode(
   node: DataFlowNode,
   context: Map<string, any>,

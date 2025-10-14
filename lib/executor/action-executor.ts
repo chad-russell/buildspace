@@ -1,8 +1,7 @@
-import { DataFlowGraph, FlowExecutionResult, NodeExecutionResult } from "@/lib/types/dataflow"
+import { DataFlowGraph, FlowExecutionResult, isExecutionRoot, NodeExecutionResult } from "@/lib/types/dataflow"
 import { topologicalSort } from "./topological-sort"
 import { executeDataNode } from "./nodes/data-executor"
 import { executeHttpRequestNode } from "./nodes/http-request-executor"
-import { executeSelectNode } from "./nodes/select-executor"
 import { executeInspectNode } from "./nodes/inspect-executor"
 import { executeSetValueNode } from "./nodes/set-value-executor"
 import { executePageNode } from "./nodes/page-executor"
@@ -10,15 +9,30 @@ import { executeActionTriggerNode } from "./nodes/action-trigger-executor"
 
 /**
  * Execute an action flow by evaluating the upstream subgraph that feeds
- * the given Action Trigger node. No implicit state is injected.
+ * the given Action Trigger node.
+ * 
+ * @param graphData - The full dataflow graph
+ * @param triggerNodeId - ID of the ActionTrigger node being invoked
+ * @param currentPageState - Optional current runtime page state to inject into the Page node
+ *                          If provided, the Page node will start with this state instead of defaults
  */
 export async function executeActionFlow(
   graphData: DataFlowGraph,
-  triggerNodeId: string
+  triggerNodeId: string,
+  currentPageState?: Record<string, any>
 ): Promise<FlowExecutionResult> {
   const startTime = Date.now()
   const nodeResults: NodeExecutionResult[] = []
   const context = new Map<string, any>()
+
+  // If current page state is provided, find the Page node and pre-populate it in context
+  if (currentPageState) {
+    const pageNode = graphData.nodes.find((n) => n.type === "page")
+    if (pageNode) {
+      console.log('[ActionExecutor] Pre-populating Page node with current state:', currentPageState)
+      context.set(pageNode.id, currentPageState)
+    }
+  }
 
   try {
     // Find the trigger node
@@ -46,6 +60,17 @@ export async function executeActionFlow(
       const nodeStartTime = Date.now()
 
       try {
+        // Skip execution if node is already in context (e.g., Page node with injected state)
+        if (context.has(node.id)) {
+          console.log(`[ActionExecutor] Skipping ${node.type} node ${node.id} - already in context`)
+          nodeResults.push({
+            nodeId: node.id,
+            output: context.get(node.id),
+            executionTime: 0,
+          })
+          continue
+        }
+
         // Get inputs for this node
           const inputs = getNodeInputs(node.id, graphData.edges, context)
 
@@ -57,9 +82,6 @@ export async function executeActionFlow(
             break
           case "httpRequest":
             output = await executeHttpRequestNode(node, context)
-            break
-          case "select":
-            output = await executeSelectNode(node, context, inputs)
             break
           case "inspect":
             output = await executeInspectNode(node, context, inputs)
@@ -136,7 +158,29 @@ export async function executeActionFlow(
 }
 
 /**
- * Get all nodes upstream from a given node (can reach the target)
+ * Get all nodes upstream from a given node, respecting execution root boundaries.
+ * 
+ * **Execution Roots as Dependency Boundaries**:
+ * This implements the principled model where Page and ActionTrigger nodes are
+ * "execution roots" that define distinct execution contexts:
+ * 
+ * - **Page Node**: Root for "Page Load" context (initial render data computation)
+ * - **ActionTrigger Node**: Root for "Action" context (mutations/side-effects)
+ * 
+ * **Boundary Rule**: When tracing dependencies from one root (e.g., ActionTrigger),
+ * if we encounter a node that is itself an execution root from a different context
+ * (e.g., Page), the trace STOPS. We include that root node in the upstream set,
+ * but we do NOT traverse its dependencies. Instead, the executor will read its
+ * cached value from the runtime context.
+ * 
+ * **Why This Matters**: When an action executes, it should only re-compute the nodes
+ * directly involved in the action logic (e.g., SetValue). It should NOT re-execute
+ * the entire page initialization graph (e.g., HTTP requests, data fetches). The page
+ * state is already in memory with current runtime values.
+ * 
+ * @param graphData - The full dataflow graph
+ * @param startNodeId - The node to start tracing from (typically an ActionTrigger)
+ * @returns Array of upstream nodes that need to be executed (excludes deps beyond boundaries)
  */
 function getUpstreamNodes(
   graphData: DataFlowGraph,
@@ -156,6 +200,15 @@ function getUpstreamNodes(
       const sourceNode = graphData.nodes.find((n) => n.id === edge.source)
       if (sourceNode && !upstream.find((n) => n.id === sourceNode.id)) {
         upstream.push(sourceNode)
+        
+        // EXECUTION ROOT BOUNDARY: Stop traversing at Execution Root nodes
+        // These nodes are execution roots for a different context (Page Load, Action Trigger, etc.).
+        // When executing an action, we read the root's cached state from context
+        // instead of re-computing all its dependencies (HTTP requests, etc.)
+        if (isExecutionRoot(sourceNode.type)) {
+          continue
+        }
+        
         traverse(sourceNode.id)
       }
     }

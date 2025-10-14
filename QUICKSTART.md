@@ -73,23 +73,12 @@ Open http://localhost:3000
      - URL: `https://jsonplaceholder.typicode.com/users/1`
      - Method: GET
 
-3. **Add Select Node**
-   - Drag "Select" node onto the canvas
-   - Connect HTTP Request output (right dot) to Select input (left dot)
-   - Click the Select node
-   - In the right panel, enter field paths (one per line):
-     ```
-     name
-     email
-     address.city
-     ```
-
-4. **Add Inspect Node**
+3. **Add Inspect Node**
    - Drag "Inspect" node onto the canvas
-   - Connect Select output to Inspect input
+   - Connect HTTP Request output to Inspect input
    - This will visualize the final output
 
-5. **Test Run**
+4. **Test Run**
    - Click "Test Run" button in the top right
    - Check the browser console to see execution results
    - You should see the transformed data with just name, email, and city

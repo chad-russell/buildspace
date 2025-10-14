@@ -55,7 +55,6 @@ export function PropertiesPanel() {
         {selectedNode.type === "httpRequest" && (
           <HttpRequestNodeProperties node={selectedNode} />
         )}
-        {selectedNode.type === "select" && <SelectNodeProperties node={selectedNode} />}
         {selectedNode.type === "inspect" && <InspectNodeProperties node={selectedNode} />}
         {selectedNode.type === "actionTrigger" && (
           <ActionTriggerNodeProperties node={selectedNode} />
@@ -275,51 +274,6 @@ function HttpRequestNodeProperties({ node }: { node: any }) {
           </div>
         </div>
       )}
-    </div>
-  )
-}
-
-function SelectNodeProperties({ node }: { node: any }) {
-  const { updateNodeData } = useDataFlowStore()
-  const [label, setLabel] = useState(node.data.label || "Select")
-  const [fieldsText, setFieldsText] = useState(
-    (node.data.fields || []).join("\n")
-  )
-
-  const handleSave = () => {
-    const fields = fieldsText
-      .split("\n")
-      .map((f: string) => f.trim())
-      .filter((f: string) => f.length > 0)
-    updateNodeData(node.id, { label, fields })
-  }
-
-  return (
-    <div className="space-y-4">
-      <div>
-        <Label htmlFor="label">Label</Label>
-        <Input
-          id="label"
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          onBlur={handleSave}
-        />
-      </div>
-      <div>
-        <Label htmlFor="fields">Field Paths (one per line)</Label>
-        <Textarea
-          id="fields"
-          value={fieldsText}
-          onChange={(e) => setFieldsText(e.target.value)}
-          onBlur={handleSave}
-          rows={8}
-          placeholder="user.name&#10;user.email&#10;data.items"
-          className="font-mono text-xs"
-        />
-        <p className="text-xs text-gray-500 mt-1">
-          Use dot notation for nested fields
-        </p>
-      </div>
     </div>
   )
 }

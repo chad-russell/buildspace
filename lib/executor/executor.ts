@@ -2,7 +2,6 @@ import { DataFlowGraph, NodeExecutionResult, FlowExecutionResult } from "@/lib/t
 import { topologicalSort } from "./topological-sort"
 import { executeDataNode } from "./nodes/data-executor"
 import { executeHttpRequestNode } from "./nodes/http-request-executor"
-import { executeSelectNode } from "./nodes/select-executor"
 import { executeInspectNode } from "./nodes/inspect-executor"
 import { executeSetValueNode } from "./nodes/set-value-executor"
 import { executePageNode } from "./nodes/page-executor"
@@ -40,9 +39,6 @@ export async function executeDataFlow(
             break
           case "httpRequest":
             output = await executeHttpRequestNode(node, context)
-            break
-          case "select":
-            output = await executeSelectNode(node, context, inputs)
             break
           case "inspect":
             output = await executeInspectNode(node, context, inputs)
@@ -125,7 +121,15 @@ export async function executeDataFlow(
   }
 }
 
-// Helper function to get inputs for a node
+/**
+ * Get inputs for a node as a flat array of upstream node outputs.
+ * This is the default input gathering mechanism for the single-value node model.
+ * 
+ * @param nodeId - The target node ID
+ * @param edges - Graph edges
+ * @param context - Execution context map (nodeId -> output value)
+ * @returns Array of upstream node outputs (order not semantically significant)
+ */
 function getNodeInputs(
   nodeId: string,
   edges: any[],
@@ -145,5 +149,61 @@ function getNodeInputs(
   }
 
   return inputs
+}
+
+/**
+ * Get inputs for a node grouped by target handle ID.
+ * 
+ * This utility supports future labeled multi-port nodes where a single node
+ * can have multiple distinct input ports (e.g., "data", "config", "trigger").
+ * 
+ * **Current Usage**: NOT USED YET. All existing nodes use the default single-value
+ * model via `getNodeInputs`. This function is staged for future extensibility.
+ * 
+ * **How it works**:
+ * - Edges may specify a `targetHandle` ID indicating which input port they connect to
+ * - Edges without a `targetHandle` are grouped under the "_default" key
+ * - Returns a map of handleId -> array of values from edges targeting that handle
+ * 
+ * **When to use**:
+ * - When implementing advanced nodes with labeled input ports
+ * - When a node needs to distinguish between different kinds of inputs
+ * 
+ * **Example**:
+ * ```ts
+ * // A hypothetical "Merge" node with two labeled inputs: "primary" and "secondary"
+ * const inputsByHandle = getNodeInputsByHandle(nodeId, edges, context)
+ * const primaryData = inputsByHandle["primary"]?.[0] // first input to "primary" port
+ * const secondaryData = inputsByHandle["secondary"]?.[0] // first input to "secondary" port
+ * ```
+ * 
+ * @param nodeId - The target node ID
+ * @param edges - Graph edges (may include `targetHandle` property)
+ * @param context - Execution context map (nodeId -> output value)
+ * @returns Record mapping handle IDs to arrays of input values
+ */
+export function getNodeInputsByHandle(
+  nodeId: string,
+  edges: any[],
+  context: Map<string, any>
+): Record<string, any[]> {
+  const inputsByHandle: Record<string, any[]> = {}
+
+  // Find all edges that target this node
+  const incomingEdges = edges.filter((edge) => edge.target === nodeId)
+
+  // Group inputs by target handle
+  for (const edge of incomingEdges) {
+    const sourceOutput = context.get(edge.source)
+    if (sourceOutput !== undefined) {
+      const handleId = edge.targetHandle || "_default"
+      if (!inputsByHandle[handleId]) {
+        inputsByHandle[handleId] = []
+      }
+      inputsByHandle[handleId].push(sourceOutput)
+    }
+  }
+
+  return inputsByHandle
 }
 
