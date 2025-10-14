@@ -4,6 +4,7 @@ import { SelectNode } from "./SelectNode"
 import { InspectNode } from "./InspectNode"
 import { PageNode } from "./PageNode"
 import { ActionTriggerNode } from "./ActionTriggerNode"
+import { SetValueNode } from "./SetValueNode"
 
 export const nodeTypes = {
   data: DataNode,
@@ -12,7 +13,8 @@ export const nodeTypes = {
   inspect: InspectNode,
   page: PageNode,
   actionTrigger: ActionTriggerNode,
+  setValue: SetValueNode,
 }
 
-export { DataNode, HttpRequestNode, SelectNode, InspectNode, PageNode, ActionTriggerNode }
+export { DataNode, HttpRequestNode, SelectNode, InspectNode, PageNode, ActionTriggerNode, SetValueNode }
 

@@ -82,6 +82,12 @@ export function FlowEditor() {
                 actionName: "",
                 namedInputs: [],
               }
+            : type === "setValue"
+            ? {
+                label: "Set Value",
+                target: null,
+                value: null,
+              }
             : {
                 label: type.charAt(0).toUpperCase() + type.slice(1),
               },

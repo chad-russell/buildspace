@@ -109,10 +109,7 @@ export function PageEditor({
   // IMPORTANT: Get the current page node from the store, not the prop, so we get live updates
   const currentPageNode = allNodes.find((n) => n.id === pageNodeId)
   const pageStateSchema = currentPageNode?.data?.pageState || []
-  console.log('PageEditor - currentPageNode from store:', currentPageNode)
-  console.log('PageEditor - pageStateSchema:', pageStateSchema)
   const metadata = createPuckMetadata(allNodes, pageStateSchema)
-  console.log('PageEditor - metadata:', metadata)
 
   const handleBack = () => {
     if (hasChanges) {

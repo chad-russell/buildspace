@@ -4,6 +4,9 @@ import { executeDataNode } from "./nodes/data-executor"
 import { executeHttpRequestNode } from "./nodes/http-request-executor"
 import { executeSelectNode } from "./nodes/select-executor"
 import { executeInspectNode } from "./nodes/inspect-executor"
+import { executeSetValueNode } from "./nodes/set-value-executor"
+import { executePageNode } from "./nodes/page-executor"
+import { executeActionTriggerNode } from "./nodes/action-trigger-executor"
 import { Reporter, buildPreview } from "./events"
 
 export async function executeDataFlow(
@@ -43,6 +46,15 @@ export async function executeDataFlow(
             break
           case "inspect":
             output = await executeInspectNode(node, context, inputs)
+            break
+          case "setValue":
+            output = await executeSetValueNode(node, context)
+            break
+          case "page":
+            output = await executePageNode(node, context)
+            break
+          case "actionTrigger":
+            output = await executeActionTriggerNode(node, context, inputs)
             break
           default:
             throw new Error(`Unknown node type: ${node.type}`)

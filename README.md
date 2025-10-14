@@ -115,6 +115,22 @@ Create a simple flow to fetch and transform API data:
 
 4. Click "Test Run" to see the results
 
+## Graph Design
+
+This project uses a single‑value node model: each node outputs one JSON value, edges carry the whole value, and field‑level wiring uses JSON path references. See `docs/GRAPH-DESIGN.md` for details.
+
+## Actions
+
+Actions are triggered from UI components (for example, the `Button` Puck component) and are consumed by an `actionTrigger` node in the graph.
+
+- Connect any producer nodes (e.g., `data`, `httpRequest`, `select`) into the left handle of an `actionTrigger` node.
+- No page state is implicitly passed to actions. If a node needs state, model it explicitly in the graph and use `$ref` bindings.
+- When triggered, the executor evaluates all nodes that can reach the `actionTrigger` node in topological order and then derives the trigger value from its inbound values:
+  - If there is one inbound value, it becomes the final value.
+  - If there are multiple inbound values and they are all plain objects, they are shallow-merged left-to-right.
+  - Otherwise, the inbound values are returned as an array.
+- If the final value is a plain object, the API returns it as `newState`, and the client merges it into the current page state.
+
 ## Project Structure
 
 ```

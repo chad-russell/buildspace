@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { dataflows } from "@/lib/db/schema"
+import { dataFlows } from "@/lib/db/schema"
 import { eq } from "drizzle-orm"
 import { executeActionFlow } from "@/lib/executor/action-executor"
 
@@ -10,21 +10,12 @@ export async function POST(
 ) {
   try {
     const { id, actionName } = params
-    const body = await request.json()
-    const { statePayload } = body
-
-    if (!statePayload || typeof statePayload !== "object") {
-      return NextResponse.json(
-        { error: "Invalid state payload" },
-        { status: 400 }
-      )
-    }
 
     // Load the dataflow from the database
     const [dataflow] = await db
       .select()
-      .from(dataflows)
-      .where(eq(dataflows.id, id))
+      .from(dataFlows)
+      .where(eq(dataFlows.id, id))
       .limit(1)
 
     if (!dataflow) {
@@ -46,26 +37,25 @@ export async function POST(
       )
     }
 
-    // Map state to action inputs based on stateMapping
-    const stateMapping = actionTriggerNode.data.stateMapping || {}
-    const actionInputs: Record<string, any> = {}
-
-    for (const [inputKey, stateKey] of Object.entries(stateMapping)) {
-      actionInputs[inputKey] = statePayload[stateKey as string]
-    }
-
     // Execute the action flow starting from the trigger node
     const result = await executeActionFlow(
       graphData,
-      actionTriggerNode.id,
-      actionInputs
+      actionTriggerNode.id
     )
 
     if (result.success) {
-      return NextResponse.json({
+      const final = result.finalOutput
+      console.log('[Action API] Final output:', final)
+      const isPlainObject =
+        final !== null && typeof final === "object" &&
+        (Object.getPrototypeOf(final) === Object.prototype || Object.getPrototypeOf(final) === null)
+      console.log('[Action API] Is plain object:', isPlainObject)
+      const response = {
         success: true,
-        newState: result.finalOutput,
-      })
+        ...(isPlainObject ? { newState: final } : {}),
+      }
+      console.log('[Action API] Sending response:', response)
+      return NextResponse.json(response)
     } else {
       return NextResponse.json(
         {

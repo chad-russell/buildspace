@@ -8,7 +8,7 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
-import { Link2 } from "lucide-react"
+import { Link2, Trash2 } from "lucide-react"
 import { isRef } from "@/lib/json/path"
 import type { JsonPathRef } from "@/lib/types/dataflow"
 
@@ -77,6 +77,7 @@ interface JsonValueProps {
   parentIsArray?: boolean
   ownerNodeId?: string
   onCreateReference?: (sourceNodeId: string, targetNodeId: string) => void
+  onDeleteSelf?: () => void
 }
 
 // Helper to check if this path is being hovered
@@ -87,7 +88,7 @@ function isPathHovered(nodeId: string | undefined, path: (string | number)[]): b
   return path.every((seg, i) => seg === hoveredPath![i])
 }
 
-function JsonValue({ value, depth, path, rootValue, onChange, readOnly, parentIsArray = false, ownerNodeId, onCreateReference }: JsonValueProps) {
+function JsonValue({ value, depth, path, rootValue, onChange, readOnly, parentIsArray = false, ownerNodeId, onCreateReference, onDeleteSelf }: JsonValueProps) {
   const INDENT = 8
   const isHighlighted = isPathHovered(ownerNodeId, path)
   
@@ -204,6 +205,7 @@ function JsonValue({ value, depth, path, rootValue, onChange, readOnly, parentIs
 
   if (Array.isArray(value)) {
     const [isCollapsed, setIsCollapsed] = useState(false)
+    const [isHovered, setIsHovered] = useState(false)
     
     const addItem = () => {
       const newRoot = setValueAtPath(rootValue, path, [...value, null])
@@ -213,12 +215,26 @@ function JsonValue({ value, depth, path, rootValue, onChange, readOnly, parentIs
     return (
       <span>
         <span 
-          className="text-slate-500 cursor-pointer hover:bg-slate-200 px-0.5 rounded"
+          className="text-slate-500 cursor-pointer hover:bg-slate-200 px-0.5 rounded relative inline-flex items-center gap-1"
           onClick={() => setIsCollapsed(!isCollapsed)}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
           draggable
           onDragStart={onDragStart}
         >
           [
+          {!readOnly && isHovered && onDeleteSelf && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onDeleteSelf()
+              }}
+              className="text-red-500 hover:text-red-700 ml-1"
+              title="Delete array"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
+          )}
         </span>
         {isCollapsed ? (
           <span className="text-slate-400 italic">...</span>
@@ -241,6 +257,12 @@ function JsonValue({ value, depth, path, rootValue, onChange, readOnly, parentIs
                   parentIsArray={true}
                   ownerNodeId={ownerNodeId}
                   onCreateReference={onCreateReference}
+                  onDeleteSelf={() => {
+                    const newArray = [...value]
+                    newArray.splice(idx, 1)
+                    const newRoot = setValueAtPath(rootValue, path, newArray)
+                    onChange(newRoot)
+                  }}
                 />
               </div>
             ))}
@@ -259,6 +281,7 @@ function JsonValue({ value, depth, path, rootValue, onChange, readOnly, parentIs
 
   if (typeof value === "object") {
     const [isCollapsed, setIsCollapsed] = useState(false)
+    const [isHovered, setIsHovered] = useState(false)
     const entries = Object.entries(value)
     
     const addField = () => {
@@ -278,12 +301,26 @@ function JsonValue({ value, depth, path, rootValue, onChange, readOnly, parentIs
     return (
       <span>
         <span 
-          className="text-slate-500 cursor-pointer hover:bg-slate-200 px-0.5 rounded"
+          className="text-slate-500 cursor-pointer hover:bg-slate-200 px-0.5 rounded relative inline-flex items-center gap-1"
           onClick={() => setIsCollapsed(!isCollapsed)}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
           draggable
           onDragStart={onDragStart}
         >
           {"{"}
+          {!readOnly && isHovered && onDeleteSelf && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onDeleteSelf()
+              }}
+              className="text-red-500 hover:text-red-700 ml-1"
+              title="Delete object"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
+          )}
         </span>
         {isCollapsed ? (
           <span className="text-slate-400 italic">...</span>
@@ -355,6 +392,7 @@ interface PrimitiveValueProps {
 function PrimitiveValue({ value, onChange, onConvertType, onDelete, readOnly, isHighlighted, ...dragProps }: PrimitiveValueProps & React.HTMLAttributes<HTMLSpanElement>) {
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState("")
+  const [isHovered, setIsHovered] = useState(false)
 
   const handleClick = () => {
     if (readOnly) return
@@ -460,8 +498,26 @@ function PrimitiveValue({ value, onChange, onConvertType, onDelete, readOnly, is
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
-        <span onClick={handleClick} {...dragProps}>
+        <span 
+          className="inline-flex items-center gap-1"
+          onClick={handleClick} 
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+          {...dragProps}
+        >
           {display}
+          {!readOnly && isHovered && onDelete && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onDelete()
+              }}
+              className="text-red-500 hover:text-red-700"
+              title="Delete value"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
+          )}
         </span>
       </ContextMenuTrigger>
       {menu}
@@ -480,6 +536,7 @@ interface ObjectKeyProps {
 function ObjectKey({ keyName, onRename, onDelete, readOnly }: ObjectKeyProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState(keyName)
+  const [isHovered, setIsHovered] = useState(false)
 
   const handleClick = () => {
     if (readOnly) return
@@ -521,10 +578,24 @@ function ObjectKey({ keyName, onRename, onDelete, readOnly }: ObjectKeyProps) {
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <span 
-          className="text-cyan-700 cursor-pointer hover:bg-cyan-50 px-1 rounded"
+          className="text-cyan-700 cursor-pointer hover:bg-cyan-50 px-1 rounded inline-flex items-center gap-1"
           onClick={handleClick}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
         >
           {keyName}
+          {!readOnly && isHovered && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onDelete()
+              }}
+              className="text-red-500 hover:text-red-700"
+              title="Delete field"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
+          )}
         </span>
       </ContextMenuTrigger>
       <ContextMenuContent>
@@ -601,6 +672,18 @@ function ReferenceChip({ reference, path, rootValue, onChange, readOnly, onDelet
     >
       <Link2 className="w-3 h-3" />
       <span>{formatPath()}</span>
+      {!readOnly && isHovered && onDelete && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onDelete()
+          }}
+          className="text-red-500 hover:text-red-700"
+          title="Delete reference"
+        >
+          <Trash2 className="w-3 h-3" />
+        </button>
+      )}
     </span>
   )
 

@@ -38,6 +38,7 @@ export function PageStateProvider({
   const triggerAction = useCallback(
     async (actionName: string) => {
       try {
+        console.log('[PageState] Triggering action:', actionName)
         const response = await fetch(
           `/api/dataflows/${projectId}/actions/${actionName}`,
           {
@@ -45,17 +46,19 @@ export function PageStateProvider({
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({
-              statePayload: pageState,
-            }),
+            body: JSON.stringify({}),
           }
         )
 
         const result = await response.json()
+        console.log('[PageState] Action result:', result)
 
         if (result.success && result.newState) {
+          console.log('[PageState] Updating state with:', result.newState)
           // Merge returned state updates
           updateState(result.newState)
+        } else {
+          console.log('[PageState] No newState returned or action failed')
         }
 
         return {
@@ -70,7 +73,7 @@ export function PageStateProvider({
         }
       }
     },
-    [pageState, projectId, updateState]
+    [projectId, updateState]
   )
 
   return (

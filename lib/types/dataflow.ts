@@ -24,7 +24,7 @@ export interface DataFlowGraph {
 }
 
 // Node type definitions
-export type NodeType = "data" | "httpRequest" | "select" | "inspect" | "page" | "actionTrigger"
+export type NodeType = "data" | "httpRequest" | "select" | "inspect" | "page" | "actionTrigger" | "setValue"
 
 // Specific node data types
 export type JsonPathRef = [{ id: string }, ...(string | number)[]]
@@ -75,8 +75,12 @@ export interface PageNodeData {
 export interface ActionTriggerNodeData {
   label: string
   actionName: string
-  namedInputs: { key: string; required: boolean }[]
-  stateMapping?: Record<string, string>
+}
+
+export interface SetValueNodeData {
+  label: string
+  target: JsonExpr | null  // Reference to path in another node
+  value: JsonExpr          // Can be literal or reference
 }
 
 // Execution result types

@@ -31,6 +31,9 @@ export function DataNode({ data, selected, id }: NodeProps) {
             onCreateReference={(src, dst) => ensureEdge(src, dst)}
           />
         </div>
+        <p className="text-[10px] text-gray-500 mt-1">
+          Outputs the entire JSON value; references ($ref) are resolved.
+        </p>
       </div>
     </BaseNode>
   )

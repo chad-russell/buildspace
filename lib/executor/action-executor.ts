@@ -4,17 +4,17 @@ import { executeDataNode } from "./nodes/data-executor"
 import { executeHttpRequestNode } from "./nodes/http-request-executor"
 import { executeSelectNode } from "./nodes/select-executor"
 import { executeInspectNode } from "./nodes/inspect-executor"
+import { executeSetValueNode } from "./nodes/set-value-executor"
+import { executePageNode } from "./nodes/page-executor"
+import { executeActionTriggerNode } from "./nodes/action-trigger-executor"
 
 /**
- * Execute an action flow starting from an action trigger node
- * @param graphData The full dataflow graph
- * @param triggerNodeId The ID of the action trigger node
- * @param actionInputs The mapped inputs from page state
+ * Execute an action flow by evaluating the upstream subgraph that feeds
+ * the given Action Trigger node. No implicit state is injected.
  */
 export async function executeActionFlow(
   graphData: DataFlowGraph,
-  triggerNodeId: string,
-  actionInputs: Record<string, any>
+  triggerNodeId: string
 ): Promise<FlowExecutionResult> {
   const startTime = Date.now()
   const nodeResults: NodeExecutionResult[] = []
@@ -27,37 +27,27 @@ export async function executeActionFlow(
       throw new Error(`Trigger node ${triggerNodeId} not found`)
     }
 
-    // Inject the action inputs as the trigger node's output
-    context.set(triggerNodeId, actionInputs)
-    nodeResults.push({
-      nodeId: triggerNodeId,
-      output: actionInputs,
-      executionTime: 0,
-    })
+    // Determine all upstream nodes that can reach the trigger
+    const upstreamNodes = getUpstreamNodes(graphData, triggerNodeId)
+    console.log('[ActionExecutor] Upstream nodes found:', upstreamNodes.map(n => `${n.id} (${n.type})`))
 
-    // Find all nodes downstream from the trigger
-    const downstreamNodes = getDownstreamNodes(graphData, triggerNodeId)
+    if (upstreamNodes.length > 0) {
+      // Induce the subgraph edges among the upstream nodes
+      const upstreamNodeIds = new Set(upstreamNodes.map((n) => n.id))
+      const inducedEdges = graphData.edges.filter(
+        (e) => upstreamNodeIds.has(e.source) && upstreamNodeIds.has(e.target)
+      )
 
-    if (downstreamNodes.length === 0) {
-      // No downstream nodes, return the action inputs as the final output
-      return {
-        success: true,
-        finalOutput: actionInputs,
-        nodeResults,
-        totalExecutionTime: Date.now() - startTime,
-      }
-    }
+      // Sort upstream nodes in execution order
+      const sortedNodes = topologicalSort(upstreamNodes, inducedEdges)
 
-    // Sort downstream nodes in execution order
-    const sortedNodes = topologicalSort(downstreamNodes, graphData.edges)
-
-    // Execute each downstream node
-    for (const node of sortedNodes) {
+      // Execute each upstream node
+      for (const node of sortedNodes) {
       const nodeStartTime = Date.now()
 
       try {
         // Get inputs for this node
-        const inputs = getNodeInputs(node.id, graphData.edges, context)
+          const inputs = getNodeInputs(node.id, graphData.edges, context)
 
         // Execute the node based on its type
         let output: any
@@ -73,6 +63,15 @@ export async function executeActionFlow(
             break
           case "inspect":
             output = await executeInspectNode(node, context, inputs)
+            break
+          case "setValue":
+            output = await executeSetValueNode(node, context)
+            break
+          case "page":
+            output = await executePageNode(node, context)
+            break
+          case "actionTrigger":
+            output = await executeActionTriggerNode(node, context, inputs)
             break
           default:
             throw new Error(`Unknown node type: ${node.type}`)
@@ -97,11 +96,27 @@ export async function executeActionFlow(
         })
         throw error
       }
+      }
     }
 
-    // Get the final output (output of the last executed node)
-    const lastNode = sortedNodes[sortedNodes.length - 1]
-    const finalOutput = lastNode ? context.get(lastNode.id) : actionInputs
+    // After execution, find the page node and return its updated state
+    // This allows SetValue mutations to be reflected in the page state
+    const pageNode = graphData.nodes.find((n) => n.type === "page")
+    console.log('[ActionExecutor] Page node found:', pageNode?.id)
+    console.log('[ActionExecutor] Context has page node:', pageNode ? context.has(pageNode.id) : false)
+    
+    let finalOutput: any
+    
+    if (pageNode && context.has(pageNode.id)) {
+      // Return the updated page state from context
+      finalOutput = context.get(pageNode.id)
+      console.log('[ActionExecutor] Returning page state as final output:', finalOutput)
+    } else {
+      // Fallback: compute the value "at" the trigger node by gathering its inputs
+      const triggerInputs = getNodeInputs(triggerNodeId, graphData.edges, context)
+      finalOutput = deriveFinalOutput(triggerInputs)
+      console.log('[ActionExecutor] Returning trigger inputs as final output:', finalOutput)
+    }
 
     return {
       success: true,
@@ -121,33 +136,33 @@ export async function executeActionFlow(
 }
 
 /**
- * Get all nodes downstream from a given node
+ * Get all nodes upstream from a given node (can reach the target)
  */
-function getDownstreamNodes(
+function getUpstreamNodes(
   graphData: DataFlowGraph,
   startNodeId: string
 ): any[] {
   const visited = new Set<string>()
-  const downstream: any[] = []
+  const upstream: any[] = []
 
   function traverse(nodeId: string) {
     if (visited.has(nodeId)) return
     visited.add(nodeId)
 
-    // Find all edges where this node is the source
-    const outgoingEdges = graphData.edges.filter((edge) => edge.source === nodeId)
+    // Find all edges where this node is the target (incoming edges)
+    const incomingEdges = graphData.edges.filter((edge) => edge.target === nodeId)
 
-    for (const edge of outgoingEdges) {
-      const targetNode = graphData.nodes.find((n) => n.id === edge.target)
-      if (targetNode && !downstream.find((n) => n.id === targetNode.id)) {
-        downstream.push(targetNode)
-        traverse(targetNode.id)
+    for (const edge of incomingEdges) {
+      const sourceNode = graphData.nodes.find((n) => n.id === edge.source)
+      if (sourceNode && !upstream.find((n) => n.id === sourceNode.id)) {
+        upstream.push(sourceNode)
+        traverse(sourceNode.id)
       }
     }
   }
 
   traverse(startNodeId)
-  return downstream
+  return upstream
 }
 
 /**
@@ -171,6 +186,24 @@ function getNodeInputs(
     }
   }
 
+  return inputs
+}
+
+function isPlainObject(value: any): value is Record<string, any> {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)
+  )
+}
+
+function deriveFinalOutput(inputs: any[]): any {
+  if (inputs.length === 0) return undefined
+  if (inputs.length === 1) return inputs[0]
+  const allObjects = inputs.every(isPlainObject)
+  if (allObjects) {
+    return inputs.reduce((acc, obj) => Object.assign(acc, obj), {})
+  }
   return inputs
 }
 

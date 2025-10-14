@@ -103,7 +103,7 @@ export default function BuildPage() {
             </p>
             <Button onClick={createNewFlow}>
               <Plus className="w-4 h-4 mr-2" />
-              Create DataFlow
+              New App
             </Button>
           </div>
         ) : (

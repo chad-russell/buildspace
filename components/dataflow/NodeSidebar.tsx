@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import { Database, Globe, Filter, Eye, FileText, Zap } from "lucide-react"
+import { Database, Globe, Filter, Eye, FileText, Zap, Edit3 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 const nodeDefinitions = [
@@ -45,6 +45,13 @@ const nodeDefinitions = [
     label: "Action Trigger",
     icon: Zap,
     description: "Execute server action",
+    color: "bg-orange-500",
+  },
+  {
+    type: "setValue",
+    label: "Set Value",
+    icon: Edit3,
+    description: "Mutate node state",
     color: "bg-orange-500",
   },
 ]

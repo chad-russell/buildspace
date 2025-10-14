@@ -61,7 +61,7 @@ export function BaseNode({
   return (
     <div
       className={cn(
-        "relative rounded-lg border-2 bg-white shadow-md min-w-[200px] transition-all",
+        "relative rounded-lg border-2 bg-white shadow-md min-w-[200px] transition-all group",
         selected ? "border-blue-500" : "border-gray-300",
         status === "running" && "animate-pulse",
         status === "success" && "border-green-500",
@@ -74,14 +74,14 @@ export function BaseNode({
         <Handle
           type="target"
           position={Position.Left}
-          className="w-3 h-3 !bg-gray-400"
+          className="w-3 h-3 !bg-gray-400 transition-transform duration-150 hover:scale-110 hover:ring-2 hover:ring-blue-300"
         />
       )}
 
       {/* New multi-handle system */}
       {renderHandles.map((handle, idx) => {
         const handleId = handle.id || `${handle.type}-${idx}`
-        const defaultClassName = "w-3 h-3 !bg-gray-400"
+        const defaultClassName = "w-3 h-3 !bg-gray-400 transition-transform duration-150 hover:scale-110 hover:ring-2 hover:ring-blue-300"
         
         return (
           <>
@@ -134,11 +134,19 @@ export function BaseNode({
 
       {/* Legacy single source handle */}
       {useLegacyHandles && showSourceHandle && (
-        <Handle
-          type="source"
-          position={Position.Right}
-          className="w-3 h-3 !bg-gray-400"
-        />
+        <>
+          <Handle
+            type="source"
+            position={Position.Right}
+            className="w-3 h-3 !bg-gray-400 transition-transform duration-150 hover:scale-110 hover:ring-2 hover:ring-blue-300"
+          />
+          {/* Hover-only caption near the default output */}
+          <div
+            className="absolute top-1/2 left-full -translate-y-1/2 ml-2 text-xs text-gray-600 opacity-0 pointer-events-none group-hover:opacity-100"
+          >
+            Output
+          </div>
+        </>
       )}
     </div>
   )
