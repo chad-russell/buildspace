@@ -1,228 +1,112 @@
 import { ComponentConfig } from "@measured/puck"
-import { resolveDataPath, MarkedInput } from "../metadata"
-import { TextBindingField, TextBindingValue } from "../fields/TextBindingField"
+import { UnifiedBindingField } from "../fields/UnifiedBindingField"
+import { resolveBinding, parseBindingType } from "../utils/binding-resolver"
 import { usePageState } from "../context/PageStateContext"
+import { useCollectionItemProps } from "../context/CollectionItemContext"
 
 export interface TextProps {
-  binding: TextBindingValue
+  value: string
 }
 
 export const TextComponent: ComponentConfig<TextProps> = {
   fields: {
-    binding: TextBindingField,
+    value: UnifiedBindingField,
   },
   defaultProps: {
-    binding: {
-      bindingType: "none",
-      text: "Enter your text here...",
-      dataPath: "",
-      stateKey: "",
-      propKey: "",
-    },
+    value: "Enter your text here...",
   },
-  // resolveData removed - was causing focus loss on input due to prop mutations
-  render: ({ binding, puck }) => {
-    const { bindingType, text, dataPath, stateKey, propKey } = binding || {
-      bindingType: "none",
-      text: "",
-      dataPath: "",
-      stateKey: "",
-      propKey: "",
+  render: (props) => {
+    const { puck } = props
+    let { value } = props
+    
+    // Backwards compatibility: migrate old format to new @ syntax
+    const oldFormatProps = props as any
+    if (!value && oldFormatProps.binding) {
+      const binding = oldFormatProps.binding
+      if (binding.bindingType === "componentProp" && binding.propKey) {
+        value = `@props.${binding.propKey}`
+      } else if (binding.bindingType === "pageState" && binding.stateKey) {
+        value = `@pageState.${binding.stateKey}`
+      } else if (binding.bindingType === "serverData" && binding.dataPath) {
+        value = `@inputs.${binding.dataPath}`
+      } else if (binding.text) {
+        value = binding.text
+      }
     }
-
-    let displayText = text || ""
-    let debugInfo = null
-
-    // Try to get page state (will be null in design mode)
+    // Get page state (null if not in PageStateProvider)
     let pageState: any = null
     try {
       const context = usePageState()
       pageState = context.pageState
-    } catch (error) {
-      // Not in PageStateProvider context (design-time)
+    } catch {
+      // Not in PageStateProvider context (design-time without state)
     }
 
-    // Server Data Binding
-    if (bindingType === "serverData" && puck?.metadata) {
-      const markedInputs = (puck.metadata as any).markedInputs as Record<
-        string,
-        MarkedInput
-      >
+    // Get component props - check metadata first (for custom components), then Collection context
+    let componentProps: any = undefined
+    
+    // First check if we have componentProps in metadata (custom components pass resolved props here)
+    componentProps = (puck?.metadata as any)?.componentProps
+    
+    // If not, try Collection context (for built-in components used directly in Collections)
+    if (!componentProps) {
+      try {
+        const collectionProps = useCollectionItemProps()
+        if (collectionProps) {
+          componentProps = collectionProps
+        }
+      } catch {
+        // Not in Collection context
+      }
+    }
+
+    // Resolve the binding
+    const displayText = resolveBinding(value, {
+      markedInputs: (puck?.metadata as any)?.markedInputs,
+      pageState,
+      componentProps,
+    })
+
+    // Parse binding type for debug info
+    const bindingInfo = parseBindingType(value)
+    
+    // Show debug info for dynamic bindings (only in edit mode when not resolved)
+    let debugInfo = null
+    if (bindingInfo.type !== "static") {
+      const isResolved = displayText !== undefined && displayText !== value
       
-      if (!dataPath) {
-        // Show available paths when no path is set
-        const availableNodes = Object.keys(markedInputs).map((id) => {
-          const node = markedInputs[id]
-          return `${id} (${node.label})`
-        })
-        debugInfo = (
-          <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
-            <div className="font-medium text-yellow-800">
-              Server data binding enabled but no path set
-            </div>
-            <div className="mt-1 text-yellow-700">
-              Available nodes: {availableNodes.join(", ")}
-            </div>
-            <div className="mt-1 text-yellow-600 font-mono">
-              Example: {Object.keys(markedInputs)[0]}.jsonData.renamed
-            </div>
-          </div>
-        )
-      } else {
-        const resolvedData = resolveDataPath(markedInputs, dataPath)
-        
-        if (resolvedData !== undefined) {
-          // Successfully resolved data
-          displayText =
-            typeof resolvedData === "string"
-              ? resolvedData
-              : JSON.stringify(resolvedData, null, 2)
-          
+      if (!isResolved) {
+        // Check if it's a @props binding that couldn't resolve (expected in edit mode)
+        if (bindingInfo.type === "props") {
+          const propDescription = bindingInfo.key 
+            ? `prop: ${bindingInfo.key}` 
+            : "entire item"
           debugInfo = (
-            <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-xs">
-              <div className="font-medium text-green-800">
-                ✓ Server data bound to: {dataPath}
-              </div>
+            <div className="mt-2 p-2 bg-purple-50 border border-purple-200 rounded text-xs text-purple-800">
+              📦 Will display collection item {propDescription} (preview to see values)
             </div>
           )
         } else {
-          // Failed to resolve - show error with hints
-          const availableNodes = Object.entries(markedInputs).map(([id, node]) => {
-            const fields = Object.keys(node.data.jsonData || {})
-            return `${id}: ${fields.join(", ")}`
-          })
-          
           debugInfo = (
-            <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs">
-              <div className="font-medium text-red-800">
-                ✗ Could not resolve path: {dataPath}
-              </div>
-              <div className="mt-2 text-red-700">
-                <div className="font-medium">Available paths:</div>
-                {availableNodes.map((nodeInfo, idx) => (
-                  <div key={idx} className="font-mono mt-1">{nodeInfo}</div>
-                ))}
-              </div>
+            <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-800">
+              ✗ Could not resolve: {value}
             </div>
           )
         }
       }
     }
 
-    // Page State Binding
-    if (bindingType === "pageState") {
-      if (!stateKey) {
-        debugInfo = (
-          <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
-            <div className="font-medium text-yellow-800">
-              Page state binding enabled but no key selected
-            </div>
-          </div>
-        )
-      } else if (pageState) {
-        // Runtime: display actual state value
-        const stateValue = pageState[stateKey]
-        
-        displayText =
-          stateValue !== undefined
-            ? typeof stateValue === "string"
-              ? stateValue
-              : JSON.stringify(stateValue, null, 2)
-            : `[${stateKey} not found]`
-        
-        if (stateValue !== undefined) {
-          debugInfo = (
-            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
-              <div className="font-medium text-blue-800">
-                ✓ Page state bound to: {stateKey}
-              </div>
-            </div>
-          )
-        } else {
-          debugInfo = (
-            <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs">
-              <div className="font-medium text-red-800">
-                ✗ Key "{stateKey}" not found in page state
-              </div>
-              <div className="mt-1 text-red-700 text-xs">
-                Available keys: {Object.keys(pageState).join(", ") || "(none)"}
-              </div>
-            </div>
-          )
-        }
-      } else {
-        // Design time: show binding info
-        debugInfo = (
-          <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded text-xs">
-            <div className="font-medium text-gray-800">
-              Bound to page state: {stateKey} (preview mode)
-            </div>
-          </div>
-        )
-      }
-    }
-
-    // Component Props Binding
-    if (bindingType === "componentProp") {
-      const componentProps = (puck?.metadata as any)?.componentProps
-      
-      if (!propKey) {
-        debugInfo = (
-          <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
-            <div className="font-medium text-yellow-800">
-              Component props binding enabled but no prop selected
-            </div>
-          </div>
-        )
-      } else if (componentProps) {
-        // Get the value from component props
-        const propValue = componentProps[propKey]
-        
-        displayText =
-          propValue !== undefined
-            ? typeof propValue === "string"
-              ? propValue
-              : JSON.stringify(propValue, null, 2)
-            : `[${propKey} not found]`
-        
-        if (propValue !== undefined) {
-          debugInfo = (
-            <div className="mt-2 p-2 bg-purple-50 border border-purple-200 rounded text-xs">
-              <div className="font-medium text-purple-800">
-                ✓ Component prop bound to: {propKey}
-              </div>
-            </div>
-          )
-        } else {
-          debugInfo = (
-            <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs">
-              <div className="font-medium text-red-800">
-                ✗ Prop "{propKey}" not found
-              </div>
-              <div className="mt-1 text-red-700 text-xs">
-                Available props: {Object.keys(componentProps).join(", ") || "(none)"}
-              </div>
-            </div>
-          )
-        }
-      } else {
-        // Design time: show binding info
-        debugInfo = (
-          <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded text-xs">
-            <div className="font-medium text-gray-800">
-              Bound to component prop: {propKey} (will resolve at runtime)
-            </div>
-          </div>
-        )
-      }
-    }
+    const finalText = typeof displayText === "string" 
+      ? displayText 
+      : displayText !== undefined 
+      ? JSON.stringify(displayText, null, 2) 
+      : ""
 
     return (
       <div>
-        <p className="text-base">{displayText}</p>
+        <p className="text-base whitespace-pre-wrap">{finalText}</p>
         {debugInfo}
       </div>
     )
   },
 }
-

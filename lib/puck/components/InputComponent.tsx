@@ -1,11 +1,12 @@
-import { ComponentConfig, CustomField } from "@measured/puck"
-import { StateKey, StateKeyField } from "../fields/StateKeyField"
+import { ComponentConfig } from "@measured/puck"
+import { UnifiedBindingField } from "../fields/UnifiedBindingField"
 import { usePageState } from "../context/PageStateContext"
+import { parseBindingType } from "../utils/binding-resolver"
 
 export interface InputProps {
   label: string
   placeholder: string
-  stateKey: StateKey
+  stateKey: string
   type: "text" | "email" | "password" | "number"
 }
 
@@ -19,7 +20,7 @@ export const InputComponent: ComponentConfig<InputProps> = {
       type: "text",
       label: "Placeholder",
     },
-    stateKey: StateKeyField,
+    stateKey: UnifiedBindingField,
     type: {
       type: "radio",
       options: [
@@ -33,7 +34,7 @@ export const InputComponent: ComponentConfig<InputProps> = {
   defaultProps: {
     label: "Input Label",
     placeholder: "Enter value...",
-    stateKey: "",
+    stateKey: "@pageState.username",
     type: "text",
   },
   render: ({ label, placeholder, stateKey, type }) => {
@@ -49,16 +50,20 @@ export const InputComponent: ComponentConfig<InputProps> = {
       // Not in PageStateProvider context (design-time)
     }
 
-    const value = (stateKey && pageState?.[stateKey]) ?? ""
+    // Extract the actual key from @pageState.key syntax
+    const bindingInfo = parseBindingType(stateKey)
+    const actualKey = bindingInfo.type === "pageState" ? bindingInfo.key : stateKey
+
+    const value = (actualKey && pageState?.[actualKey]) ?? ""
     const isEditable = !!updateState
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (updateState && stateKey) {
+      if (updateState && actualKey) {
         let newValue: any = e.target.value
         if (type === "number") {
           newValue = parseFloat(newValue) || 0
         }
-        updateState({ [stateKey]: newValue })
+        updateState({ [actualKey]: newValue })
       }
     }
 
@@ -88,4 +93,3 @@ export const InputComponent: ComponentConfig<InputProps> = {
     )
   },
 }
-

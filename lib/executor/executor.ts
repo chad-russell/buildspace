@@ -1,4 +1,4 @@
-import { DataFlowGraph, NodeExecutionResult, FlowExecutionResult } from "@/lib/types/dataflow"
+import { DataFlowGraph, NodeExecutionResult, FlowExecutionResult, DataFlowNode } from "@/lib/types/dataflow"
 import { topologicalSort } from "./topological-sort"
 import { executeDataNode } from "./nodes/data-executor"
 import { executeHttpRequestNode } from "./nodes/http-request-executor"
@@ -119,6 +119,199 @@ export async function executeDataFlow(
     })
     return result
   }
+}
+
+/**
+ * Execute a workflow by pushing forward from an ActionTrigger node.
+ * This is the new push-based execution model where workflows flow downstream from triggers.
+ * 
+ * @param graphData - The full dataflow graph
+ * @param triggerNodeId - ID of the ActionTrigger node to start from
+ * @param context - Optional pre-populated execution context (e.g., with Page State)
+ * @param options - Optional reporter for execution events
+ * @returns Execution result
+ */
+export async function executeWorkflow(
+  graphData: DataFlowGraph,
+  triggerNodeId: string,
+  context?: Map<string, any>,
+  options?: { reporter?: Reporter; signal?: AbortSignal }
+): Promise<FlowExecutionResult> {
+  const startTime = Date.now()
+  const nodeResults: NodeExecutionResult[] = []
+  const executionContext = context || new Map<string, any>()
+  const reporter = options?.reporter
+
+  try {
+    reporter?.emit({ type: "run:start", startedAt: startTime })
+
+    // Find the trigger node
+    const triggerNode = graphData.nodes.find((n) => n.id === triggerNodeId)
+    if (!triggerNode) {
+      throw new Error(`Trigger node ${triggerNodeId} not found`)
+    }
+
+    // Find all nodes downstream from the trigger (BFS forward)
+    const downstreamNodes = getDownstreamNodes(graphData, triggerNodeId)
+    console.log('[Executor] Downstream nodes found:', downstreamNodes.map(n => `${n.id} (${n.type})`))
+
+    // Include the trigger node itself in the execution
+    const nodesToExecute = [triggerNode, ...downstreamNodes]
+
+    // Filter edges to only those in the execution subgraph
+    const nodeIds = new Set(nodesToExecute.map(n => n.id))
+    const subgraphEdges = graphData.edges.filter(
+      e => nodeIds.has(e.source) && nodeIds.has(e.target)
+    )
+
+    // Sort nodes in topological order
+    const sortedNodes = topologicalSort(nodesToExecute, subgraphEdges)
+
+    // Execute each node
+    for (const node of sortedNodes) {
+      const nodeStartTime = Date.now()
+      reporter?.emit({ type: "node:start", nodeId: node.id, label: node.data?.label, startedAt: nodeStartTime })
+
+      try {
+        // Skip if already in context (e.g., Page State pre-populated)
+        if (executionContext.has(node.id)) {
+          console.log(`[Executor] Skipping ${node.type} node ${node.id} - already in context`)
+          nodeResults.push({
+            nodeId: node.id,
+            output: executionContext.get(node.id),
+            executionTime: 0,
+          })
+          reporter?.emit({ type: "node:complete", nodeId: node.id, durationMs: 0 })
+          continue
+        }
+
+        // Get inputs for this node
+        const inputs = getNodeInputs(node.id, graphData.edges, executionContext)
+
+        // Execute the node based on its type
+        let output: any
+        switch (node.type) {
+          case "data":
+            output = await executeDataNode(node, executionContext)
+            break
+          case "httpRequest":
+            output = await executeHttpRequestNode(node, executionContext)
+            break
+          case "inspect":
+            output = await executeInspectNode(node, executionContext, inputs)
+            break
+          case "setValue":
+            output = await executeSetValueNode(node, executionContext)
+            break
+          case "page":
+            output = await executePageNode(node, executionContext)
+            break
+          case "actionTrigger":
+            output = await executeActionTriggerNode(node, executionContext, inputs)
+            break
+          default:
+            throw new Error(`Unknown node type: ${node.type}`)
+        }
+
+        // Store the output in context
+        executionContext.set(node.id, output)
+
+        // Record execution result
+        nodeResults.push({
+          nodeId: node.id,
+          output,
+          executionTime: Date.now() - nodeStartTime,
+        })
+
+        const { preview, bytes } = buildPreview(output)
+        reporter?.emit({ type: "node:output", nodeId: node.id, preview, bytes })
+        reporter?.emit({ type: "node:complete", nodeId: node.id, durationMs: Date.now() - nodeStartTime })
+      } catch (error) {
+        // Record error for this node
+        nodeResults.push({
+          nodeId: node.id,
+          output: null,
+          error: error instanceof Error ? error.message : "Unknown error",
+          executionTime: Date.now() - nodeStartTime,
+        })
+
+        reporter?.emit({
+          type: "node:error",
+          nodeId: node.id,
+          error: error instanceof Error ? error.message : "Unknown error",
+        })
+        throw error
+      }
+    }
+
+    // Return the execution context (caller decides what to extract)
+    const result: FlowExecutionResult = {
+      success: true,
+      finalOutput: executionContext,
+      nodeResults,
+      totalExecutionTime: Date.now() - startTime,
+    }
+    reporter?.emit({
+      type: "run:complete",
+      durationMs: result.totalExecutionTime,
+      outputs: {},
+    })
+    return result
+  } catch (error) {
+    const result = {
+      success: false,
+      finalOutput: null,
+      nodeResults,
+      totalExecutionTime: Date.now() - startTime,
+      error: error instanceof Error ? error.message : "Unknown error",
+    }
+    reporter?.emit({
+      type: "run:error",
+      error: result.error as string,
+      durationMs: result.totalExecutionTime,
+    })
+    return result
+  }
+}
+
+/**
+ * Find all nodes downstream from a given node (following edges forward).
+ * Uses BFS to traverse the graph in the direction of data flow.
+ * 
+ * @param graphData - The full dataflow graph
+ * @param startNodeId - The node to start from (typically an ActionTrigger)
+ * @returns Array of downstream nodes (excludes the start node itself)
+ */
+function getDownstreamNodes(
+  graphData: DataFlowGraph,
+  startNodeId: string
+): DataFlowNode[] {
+  const visited = new Set<string>()
+  const downstream: DataFlowNode[] = []
+  const queue: string[] = [startNodeId]
+
+  visited.add(startNodeId)
+
+  while (queue.length > 0) {
+    const currentNodeId = queue.shift()!
+
+    // Find all edges where this node is the source (outgoing edges)
+    const outgoingEdges = graphData.edges.filter((edge) => edge.source === currentNodeId)
+
+    for (const edge of outgoingEdges) {
+      if (!visited.has(edge.target)) {
+        visited.add(edge.target)
+        queue.push(edge.target)
+
+        const targetNode = graphData.nodes.find((n) => n.id === edge.target)
+        if (targetNode) {
+          downstream.push(targetNode)
+        }
+      }
+    }
+  }
+
+  return downstream
 }
 
 /**

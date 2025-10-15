@@ -5,10 +5,10 @@ import { ContainerComponent } from "./components/ContainerComponent"
 import { DataDisplayComponent } from "./components/DataDisplayComponent"
 import { InputComponent } from "./components/InputComponent"
 import { ButtonComponent } from "./components/ButtonComponent"
+import { CollectionComponent } from "./components/CollectionComponent"
+import { CheckboxComponent } from "./components/CheckboxComponent"
 import { CustomComponent } from "@/lib/db/schema"
 import { buildDynamicPuckConfig } from "./custom-components"
-import { ComponentTextBindingField } from "./fields/TextBindingField"
-import { PropKeyField } from "./fields/PropKeyField"
 
 // Base config with built-in components (for page editing)
 export const basePuckConfig: Config = {
@@ -19,37 +19,24 @@ export const basePuckConfig: Config = {
     DataDisplay: DataDisplayComponent,
     Input: InputComponent,
     Button: ButtonComponent,
+    Checkbox: CheckboxComponent,
+    Collection: CollectionComponent,
   },
 }
 
-// Config for designing custom components (component props only)
+// Config for designing custom components
+// Now uses the same unified @ syntax as the main editor!
+// Components use @props.key to bind to component props defined in the schema
 export const componentDesignConfig: Config = {
   components: {
-    Text: {
-      ...TextComponent,
-      fields: {
-        binding: ComponentTextBindingField,
-      },
-    },
-    Heading: {
-      ...HeadingComponent,
-      fields: {
-        text: HeadingComponent.fields?.text || { type: "text" },
-        level: HeadingComponent.fields?.level || { type: "select", options: [] },
-        bindingType: {
-          type: "radio",
-          options: [
-            { label: "Static Text", value: "none" },
-            { label: "Component Props", value: "componentProp" },
-          ],
-        },
-        propKey: PropKeyField,
-      },
-    },
+    Text: TextComponent,
+    Heading: HeadingComponent,
     Container: ContainerComponent,
     DataDisplay: DataDisplayComponent,
     Input: InputComponent,
     Button: ButtonComponent,
+    Checkbox: CheckboxComponent,
+    Collection: CollectionComponent,
   },
 }
 

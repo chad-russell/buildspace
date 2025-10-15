@@ -28,25 +28,12 @@ export async function POST(
 
     const graphData = dataflow.graphData as any
 
-    // Find the action trigger node by actionName
-    const actionTriggerNode = graphData.nodes.find(
-      (node: any) =>
-        node.type === "actionTrigger" && node.data.actionName === actionName
-    )
-
-    if (!actionTriggerNode) {
-      return NextResponse.json(
-        { error: `Action "${actionName}" not found` },
-        { status: 404 }
-      )
-    }
-
     console.log('[Action API] Received current page state:', currentPageState)
 
-    // Execute the action flow starting from the trigger node with current page state
+    // Execute the action flow by actionName
     const result = await executeActionFlow(
       graphData,
-      actionTriggerNode.id,
+      actionName,
       currentPageState
     )
 

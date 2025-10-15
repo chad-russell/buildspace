@@ -2,6 +2,7 @@ import React from "react"
 import { Config, ComponentConfig } from "@measured/puck"
 import { CustomComponent } from "@/lib/db/schema"
 import { CustomComponentWrapper } from "./components/CustomComponentWrapper"
+import { UnifiedBindingField } from "./fields/UnifiedBindingField"
 
 /**
  * Fetches custom components from the API for a given user
@@ -50,14 +51,9 @@ export function createCustomComponentConfig(
         }
         break
       case "boolean":
-        fields[prop.key] = {
-          type: "radio",
-          label: prop.label || prop.key,
-          options: [
-            { label: "True", value: true },
-            { label: "False", value: false },
-          ],
-        }
+        // Use UnifiedBindingField to support both literal values and @ syntax bindings
+        // Accepts: "true", "yes", "false", "no" (case-insensitive), or @pageState.key, @inputs.path, @props.key
+        fields[prop.key] = UnifiedBindingField
         break
       case "object":
         fields[prop.key] = {
@@ -73,8 +69,8 @@ export function createCustomComponentConfig(
   return {
     fields,
     defaultProps,
-    render: (props) => {
-      return <CustomComponentWrapper componentId={component.id} props={props} />
+    render: (renderProps) => {
+      return <CustomComponentWrapper componentId={component.id} props={renderProps} />
     },
   }
 }

@@ -13,10 +13,6 @@ export interface DataFlowNode {
   data: Record<string, any>
 }
 
-export function isExecutionRoot(nodeType: string) {
-  return nodeType === "page" || nodeType === "actionTrigger"
-}
-
 export interface DataFlowEdge {
   id: string
   source: string
@@ -65,6 +61,7 @@ export interface PageStateField {
 export interface PageNodeData {
   label: string
   slug: string
+  onLoadTriggerId?: string  // ID of ActionTrigger to execute on page load
   pageState?: PageStateField[]
   puckData?: {
     content: any[]

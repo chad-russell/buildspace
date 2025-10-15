@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react"
 import { Render, Data } from "@measured/puck"
 import { puckConfig } from "@/lib/puck/config"
 import { CustomComponent } from "@/lib/db/schema"
+import { useCollectionItemProps } from "@/lib/puck/context/CollectionItemContext"
 
 interface CustomComponentWrapperProps {
   componentId: string
@@ -23,6 +24,14 @@ export function CustomComponentWrapper({
   const [component, setComponent] = useState<CustomComponent | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Check if we're inside a Collection and get the item props
+  let collectionItemProps: Record<string, any> | null = null
+  try {
+    collectionItemProps = useCollectionItemProps()
+  } catch {
+    // Not in a Collection context
+  }
 
   useEffect(() => {
     async function fetchComponent() {
@@ -62,15 +71,69 @@ export function CustomComponentWrapper({
     )
   }
 
-  // Create metadata from the props passed to this component
-  // This allows child components to access the custom component's props
+  // Helper function to convert string values to boolean (same logic as CheckboxComponent)
+  const toBool = (val: any): boolean => {
+    if (typeof val === "boolean") return val
+    if (typeof val === "number") return val !== 0
+    if (typeof val === "string") {
+      const lower = val.toLowerCase().trim()
+      return lower === "true" || lower === "yes"
+    }
+    return false
+  }
+
+  // Resolve component props - supports @ syntax for collection items
+  // This allows mixing static values and dynamic collection item props
+  const effectiveProps: Record<string, any> = {}
+  
+  Object.entries(props).forEach(([key, value]) => {
+    // Skip internal Puck props
+    if (key === 'id' || key === 'puck' || key === 'editMode') {
+      return
+    }
+
+    // Find the prop definition to check if it's a boolean type
+    const propDef = component.propsSchema.find((p) => p.key === key)
+    
+    // If value uses @props syntax and we're in a Collection, resolve from collection item
+    if (typeof value === 'string' && collectionItemProps) {
+      if (value === '@props') {
+        // Return the entire collection item
+        effectiveProps[key] = collectionItemProps
+      } else if (value.startsWith('@props.')) {
+        // Return a specific property
+        const propKey = value.slice('@props.'.length)
+        const resolvedValue = collectionItemProps[propKey] ?? value
+        // Convert to boolean if the prop type is boolean
+        effectiveProps[key] = propDef?.type === 'boolean' ? toBool(resolvedValue) : resolvedValue
+      } else {
+        // Use the configured value (static text, @pageState, @inputs, etc.)
+        // Convert to boolean if the prop type is boolean and it's a static value (no @ prefix)
+        if (propDef?.type === 'boolean' && !value.startsWith('@')) {
+          effectiveProps[key] = toBool(value)
+        } else {
+          effectiveProps[key] = value
+        }
+      }
+    } else {
+      // Use the configured value (static text, @pageState, @inputs, etc.)
+      // Convert to boolean if the prop type is boolean and it's a static value (no @ prefix)
+      if (propDef?.type === 'boolean' && typeof value === 'string' && !value.startsWith('@')) {
+        effectiveProps[key] = toBool(value)
+      } else {
+        effectiveProps[key] = value
+      }
+    }
+  })
+  
+  // Merge with existing metadata to preserve markedInputs etc.
   const metadata = {
-    componentProps: props,
-    ...(puck?.metadata || {}),
+    ...( puck?.metadata || {}),
+    componentProps: effectiveProps,
   }
 
   return (
-    <div className="custom-component-wrapper">
+    <div className="custom-component-wrapper" style={{ minHeight: '20px', display: 'block' }}>
       <Render
         config={puckConfig}
         data={component.puckData}

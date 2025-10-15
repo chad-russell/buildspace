@@ -14,8 +14,8 @@ export function ActionTriggerNode({ data, selected, id }: NodeProps) {
       title={data.label || "Action Trigger"}
       selected={selected}
       icon={<Zap className="w-4 h-4" />}
-      showTargetHandle={true}
-      showSourceHandle={false}
+      showTargetHandle={false}
+      showSourceHandle={true}
       color="bg-orange-500"
       nodeId={id}
     >
@@ -34,7 +34,7 @@ export function ActionTriggerNode({ data, selected, id }: NodeProps) {
           </p>
         </div>
         <div className="text-[11px] text-gray-500 border-t pt-2">
-          Consumes upstream values on trigger; action result prefers the Page's updated state.
+          Workflow entry point. Executes all downstream nodes when triggered.
         </div>
       </div>
     </BaseNode>

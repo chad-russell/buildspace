@@ -16,7 +16,7 @@ interface HttpRequestPreviewProps {
 
 /**
  * Shared HTTP request preview component with fetch functionality
- * Used in both HttpRequestNode (main canvas) and MarkedInputNode (page editor sidebar)
+ * Used in HttpRequestNode (main canvas)
  */
 export function HttpRequestPreview({ nodeId, nodeData }: HttpRequestPreviewProps) {
   const { updateNodeData, flowId } = useDataFlowStore()
