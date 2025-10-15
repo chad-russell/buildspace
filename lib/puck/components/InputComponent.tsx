@@ -1,11 +1,11 @@
-import { ComponentConfig } from "@measured/puck"
-import { StateKeyField } from "../fields/StateKeyField"
+import { ComponentConfig, CustomField } from "@measured/puck"
+import { StateKey, StateKeyField } from "../fields/StateKeyField"
 import { usePageState } from "../context/PageStateContext"
 
 export interface InputProps {
   label: string
   placeholder: string
-  stateKey: string
+  stateKey: StateKey
   type: "text" | "email" | "password" | "number"
 }
 
@@ -49,7 +49,7 @@ export const InputComponent: ComponentConfig<InputProps> = {
       // Not in PageStateProvider context (design-time)
     }
 
-    const value = pageState?.[stateKey] ?? ""
+    const value = (stateKey && pageState?.[stateKey]) ?? ""
     const isEditable = !!updateState
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {

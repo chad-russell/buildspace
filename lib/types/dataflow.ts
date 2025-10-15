@@ -1,5 +1,8 @@
 // Core DataFlow types for React Flow
 
+// Re-export PropField from schema for convenience
+export type { PropField } from "@/lib/db/schema"
+
 export interface DataFlowNode {
   id: string
   type: string

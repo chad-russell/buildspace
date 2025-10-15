@@ -37,14 +37,14 @@ export const ContainerComponent: ComponentConfig<ContainerProps> = {
     content: [],
   },
   render: ({ padding, backgroundColor, content: Content }) => {
-    const paddingClasses = {
+    const paddingClasses: Record<string, string> = {
       none: "p-0",
       small: "p-2",
       medium: "p-4",
       large: "p-8",
     }
 
-    const bgClasses = {
+    const bgClasses: Record<string, string> = {
       white: "bg-white",
       gray: "bg-gray-100",
       blue: "bg-blue-50",

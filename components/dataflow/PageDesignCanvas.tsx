@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import { Puck, Data } from "@measured/puck"
+import { Puck, Data, Config } from "@measured/puck"
 import "@measured/puck/puck.css"
 import { puckConfig } from "@/lib/puck/config"
 import { PuckMetadata } from "@/lib/puck/metadata"
@@ -14,6 +14,8 @@ interface PageDesignCanvasProps {
   // When this value changes, Puck is remounted. Parent should only
   // change it when external data is swapped in, not on each edit.
   resetKey?: string | number
+  // Optional custom config (defaults to puckConfig if not provided)
+  config?: Config
 }
 
 export function PageDesignCanvas({
@@ -22,6 +24,7 @@ export function PageDesignCanvas({
   onChange,
   projectId,
   resetKey,
+  config = puckConfig,
 }: PageDesignCanvasProps) {
   const stateSchema = metadata.pageStateSchema || []
 
@@ -32,7 +35,7 @@ export function PageDesignCanvas({
     <div className="w-full h-full">
       <Puck
         key={stableKey}
-        config={puckConfig}
+        config={config}
         data={data}
         metadata={metadata}
         onChange={onChange}

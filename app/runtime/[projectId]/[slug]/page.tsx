@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
-import { Render, Data } from "@measured/puck"
+import { Render, Data, Config } from "@measured/puck"
 import "@measured/puck/puck.css"
-import { puckConfig } from "@/lib/puck/config"
+import { puckConfig, buildPuckConfigWithCustomComponents } from "@/lib/puck/config"
 import { PageStateProvider } from "@/lib/puck/context/PageStateContext"
 import { createPuckMetadata } from "@/lib/puck/metadata"
 import { resolvePageState } from "@/lib/executor/page-state-resolver"
+import { CustomComponent } from "@/lib/db/schema"
 
 export default function PublishedPage() {
   const params = useParams()
@@ -19,10 +20,20 @@ export default function PublishedPage() {
   const [metadata, setMetadata] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [dynamicConfig, setDynamicConfig] = useState<Config>(puckConfig)
 
   useEffect(() => {
     const loadPageData = async () => {
       try {
+        // Load custom components first
+        const componentsResponse = await fetch("/api/custom-components?userId=placeholder-user-id")
+        let customComponents: CustomComponent[] = []
+        if (componentsResponse.ok) {
+          customComponents = await componentsResponse.json()
+          const config = buildPuckConfigWithCustomComponents(customComponents)
+          setDynamicConfig(config)
+        }
+
         // Load the project/dataflow graph data
         const response = await fetch(`/api/dataflows/${projectId}`)
         if (!response.ok) {
@@ -86,7 +97,7 @@ export default function PublishedPage() {
   return (
     <PageStateProvider initialState={resolvedState} projectId={projectId}>
       <div className="w-full min-h-screen">
-        <Render config={puckConfig} data={pageData} />
+        <Render config={dynamicConfig} data={pageData} />
       </div>
     </PageStateProvider>
   )

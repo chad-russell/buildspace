@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Plus, Workflow, Calendar } from "lucide-react"
+import { Plus, Workflow, Calendar, Box } from "lucide-react"
 
 interface DataFlow {
   id: string
@@ -84,11 +84,40 @@ export default function BuildPage() {
               Visual computation and application development
             </p>
           </div>
-          <Button onClick={createNewFlow}>
-            <Plus className="w-4 h-4 mr-2" />
-            New App
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => router.push("/build/custom-components")}>
+              <Box className="w-4 h-4 mr-2" />
+              Components
+            </Button>
+            <Button onClick={createNewFlow}>
+              <Plus className="w-4 h-4 mr-2" />
+              New App
+            </Button>
+          </div>
         </div>
+
+        {/* Quick access section */}
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold mb-4">Quick Access</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card
+              className="cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => router.push("/build/custom-components")}
+            >
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Box className="w-5 h-5" />
+                  Custom Components
+                </CardTitle>
+                <CardDescription>
+                  Create and manage reusable UI components
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          </div>
+        </div>
+
+        <h2 className="text-lg font-semibold mb-4">Applications</h2>
 
         {loading ? (
           <div className="text-center py-12">

@@ -6,32 +6,45 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 
 export interface TextBindingValue {
-  bindingType: "none" | "serverData" | "pageState"
+  bindingType: "none" | "serverData" | "pageState" | "componentProp"
   text?: string
   dataPath?: string
   stateKey?: string
+  propKey?: string
 }
 
-export const TextBindingField = {
-  type: "custom" as const,
-  render: ({ name, onChange, value }: { 
-    name: string
-    onChange: (val: TextBindingValue) => void
-    value: TextBindingValue 
-  }) => {
-    const currentValue: TextBindingValue = value || {
-      bindingType: "none",
-      text: "",
-      dataPath: "",
-      stateKey: "",
-    }
+export interface TextBindingFieldOptions {
+  allowServerData?: boolean
+  allowPageState?: boolean
+  allowComponentProps?: boolean
+}
 
-    const handleBindingTypeChange = (newType: "none" | "serverData" | "pageState") => {
-      onChange({
-        ...currentValue,
-        bindingType: newType,
-      })
-    }
+export function createTextBindingField(options: TextBindingFieldOptions = {
+  allowServerData: true,
+  allowPageState: true,
+  allowComponentProps: false,
+}) {
+  return {
+    type: "custom" as const,
+    render: ({ name, onChange, value }: { 
+      name: string
+      onChange: (val: TextBindingValue) => void
+      value: TextBindingValue 
+    }) => {
+      const currentValue: TextBindingValue = value || {
+        bindingType: "none",
+        text: "",
+        dataPath: "",
+        stateKey: "",
+        propKey: "",
+      }
+
+      const handleBindingTypeChange = (newType: TextBindingValue["bindingType"]) => {
+        onChange({
+          ...currentValue,
+          bindingType: newType,
+        })
+      }
 
     const handleTextChange = (newText: string) => {
       onChange({
@@ -54,11 +67,18 @@ export const TextBindingField = {
       })
     }
 
+    const handlePropKeyChange = (newKey: string) => {
+      onChange({
+        ...currentValue,
+        propKey: newKey,
+      })
+    }
+
     return (
       <div className="space-y-4">
         <div>
           <FieldLabel label="Binding Type" />
-          <div className="flex gap-2 mt-2">
+          <div className="flex gap-2 mt-2 flex-wrap">
             <button
               type="button"
               onClick={() => handleBindingTypeChange("none")}
@@ -70,28 +90,48 @@ export const TextBindingField = {
             >
               Static Text
             </button>
-            <button
-              type="button"
-              onClick={() => handleBindingTypeChange("serverData")}
-              className={`flex-1 px-3 py-2 text-sm rounded border transition-colors ${
-                currentValue.bindingType === "serverData"
-                  ? "bg-blue-500 text-white border-blue-500"
-                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-              }`}
-            >
-              Server Data
-            </button>
-            <button
-              type="button"
-              onClick={() => handleBindingTypeChange("pageState")}
-              className={`flex-1 px-3 py-2 text-sm rounded border transition-colors ${
-                currentValue.bindingType === "pageState"
-                  ? "bg-blue-500 text-white border-blue-500"
-                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-              }`}
-            >
-              Page State
-            </button>
+            
+            {options.allowServerData && (
+              <button
+                type="button"
+                onClick={() => handleBindingTypeChange("serverData")}
+                className={`flex-1 px-3 py-2 text-sm rounded border transition-colors ${
+                  currentValue.bindingType === "serverData"
+                    ? "bg-blue-500 text-white border-blue-500"
+                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                }`}
+              >
+                Server Data
+              </button>
+            )}
+            
+            {options.allowPageState && (
+              <button
+                type="button"
+                onClick={() => handleBindingTypeChange("pageState")}
+                className={`flex-1 px-3 py-2 text-sm rounded border transition-colors ${
+                  currentValue.bindingType === "pageState"
+                    ? "bg-blue-500 text-white border-blue-500"
+                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                }`}
+              >
+                Page State
+              </button>
+            )}
+            
+            {options.allowComponentProps && (
+              <button
+                type="button"
+                onClick={() => handleBindingTypeChange("componentProp")}
+                className={`flex-1 px-3 py-2 text-sm rounded border transition-colors ${
+                  currentValue.bindingType === "componentProp"
+                    ? "bg-blue-500 text-white border-blue-500"
+                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                }`}
+              >
+                Component Props
+              </button>
+            )}
           </div>
         </div>
 
@@ -173,8 +213,39 @@ export const TextBindingField = {
             </p>
           </div>
         )}
+
+        {currentValue.bindingType === "componentProp" && (
+          <div>
+            <Label htmlFor={`${name}-propKey`}>Component Prop</Label>
+            <Input
+              id={`${name}-propKey`}
+              value={currentValue.propKey || ""}
+              onChange={(e) => handlePropKeyChange(e.target.value)}
+              placeholder="title"
+              className="mt-1 font-mono text-sm"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              The component prop to bind to (defined in props schema)
+            </p>
+          </div>
+        )}
       </div>
     )
   },
+  }
 }
+
+// Export default for page-level components (backward compatibility)
+export const TextBindingField = createTextBindingField({
+  allowServerData: true,
+  allowPageState: true,
+  allowComponentProps: false,
+})
+
+// Export variant for component editor
+export const ComponentTextBindingField = createTextBindingField({
+  allowServerData: false,
+  allowPageState: false,
+  allowComponentProps: true,
+})
 

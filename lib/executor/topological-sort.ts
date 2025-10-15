@@ -22,7 +22,7 @@ export function topologicalSort(
 
   // Find all nodes with no incoming edges
   const queue: string[] = []
-  for (const [nodeId, degree] of inDegree.entries()) {
+  for (const [nodeId, degree] of Array.from(inDegree.entries())) {
     if (degree === 0) {
       queue.push(nodeId)
     }

@@ -17,15 +17,17 @@ export const TextComponent: ComponentConfig<TextProps> = {
       text: "Enter your text here...",
       dataPath: "",
       stateKey: "",
+      propKey: "",
     },
   },
   // resolveData removed - was causing focus loss on input due to prop mutations
   render: ({ binding, puck }) => {
-    const { bindingType, text, dataPath, stateKey } = binding || {
+    const { bindingType, text, dataPath, stateKey, propKey } = binding || {
       bindingType: "none",
       text: "",
       dataPath: "",
       stateKey: "",
+      propKey: "",
     }
 
     let displayText = text || ""
@@ -154,6 +156,61 @@ export const TextComponent: ComponentConfig<TextProps> = {
           <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded text-xs">
             <div className="font-medium text-gray-800">
               Bound to page state: {stateKey} (preview mode)
+            </div>
+          </div>
+        )
+      }
+    }
+
+    // Component Props Binding
+    if (bindingType === "componentProp") {
+      const componentProps = (puck?.metadata as any)?.componentProps
+      
+      if (!propKey) {
+        debugInfo = (
+          <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
+            <div className="font-medium text-yellow-800">
+              Component props binding enabled but no prop selected
+            </div>
+          </div>
+        )
+      } else if (componentProps) {
+        // Get the value from component props
+        const propValue = componentProps[propKey]
+        
+        displayText =
+          propValue !== undefined
+            ? typeof propValue === "string"
+              ? propValue
+              : JSON.stringify(propValue, null, 2)
+            : `[${propKey} not found]`
+        
+        if (propValue !== undefined) {
+          debugInfo = (
+            <div className="mt-2 p-2 bg-purple-50 border border-purple-200 rounded text-xs">
+              <div className="font-medium text-purple-800">
+                ✓ Component prop bound to: {propKey}
+              </div>
+            </div>
+          )
+        } else {
+          debugInfo = (
+            <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs">
+              <div className="font-medium text-red-800">
+                ✗ Prop "{propKey}" not found
+              </div>
+              <div className="mt-1 text-red-700 text-xs">
+                Available props: {Object.keys(componentProps).join(", ") || "(none)"}
+              </div>
+            </div>
+          )
+        }
+      } else {
+        // Design time: show binding info
+        debugInfo = (
+          <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded text-xs">
+            <div className="font-medium text-gray-800">
+              Bound to component prop: {propKey} (will resolve at runtime)
             </div>
           </div>
         )

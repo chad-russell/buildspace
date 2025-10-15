@@ -1,5 +1,6 @@
 import * as React from "react"
 import type { CustomField } from "@measured/puck"
+import { FieldLabel } from "@measured/puck"
 
 export type StateKey = string | undefined
 
@@ -8,12 +9,8 @@ export type StateKey = string | undefined
  */
 export const StateKeyField: CustomField<StateKey> = {
   type: "custom",
-  label: "State Key",
-  render: ({ value, onChange, readOnly, puck }) => {
-    // Get state schema from metadata
-    const stateSchema = (puck?.metadata as any)?.pageStateSchema || []
-
-    const handleDrop: React.DragEventHandler<HTMLInputElement | HTMLSelectElement> = (e) => {
+  render: ({ value, onChange, readOnly }) => {
+    const handleDrop: React.DragEventHandler<HTMLInputElement> = (e) => {
       if (readOnly) return
       const raw = e.dataTransfer.getData("application/x-state-key")
       if (!raw) return
@@ -24,44 +21,26 @@ export const StateKeyField: CustomField<StateKey> = {
       } catch {}
     }
 
-    const handleDragOver: React.DragEventHandler<HTMLInputElement | HTMLSelectElement> = (e) => {
+    const handleDragOver: React.DragEventHandler<HTMLInputElement> = (e) => {
       if (e.dataTransfer.types.includes("application/x-state-key")) {
         e.preventDefault()
       }
     }
 
-    // If we have a schema, render a select. Otherwise render a free text input.
-    if (stateSchema.length > 0) {
-      return (
-        <select
+    return (
+      <div className="space-y-1">
+        <FieldLabel label="Page State Binding" />
+        <input
+          type="text"
           value={value ?? ""}
           onChange={(e) => onChange(e.target.value)}
           onDrop={handleDrop}
           onDragOver={handleDragOver}
-          disabled={readOnly}
-          className="w-full border rounded px-2 py-1 text-sm"
-        >
-          <option value="">Select state key</option>
-          {stateSchema.map((field: any) => (
-            <option key={field.key} value={field.key}>
-              {field.key}
-            </option>
-          ))}
-        </select>
-      )
-    }
-
-    return (
-      <input
-        type="text"
-        value={value ?? ""}
-        onChange={(e) => onChange(e.target.value)}
-        onDrop={handleDrop}
-        onDragOver={handleDragOver}
-        readOnly={readOnly}
-        placeholder="username"
-        className="w-full border rounded px-2 py-1 text-sm"
-      />
+          readOnly={readOnly}
+          placeholder="e.g., username, email, password"
+          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        />
+      </div>
     )
   },
 }

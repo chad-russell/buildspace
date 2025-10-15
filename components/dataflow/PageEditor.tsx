@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react"
 import { Node } from "reactflow"
-import { Data, Render } from "@measured/puck"
+import { Data, Render, Config } from "@measured/puck"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Save, Eye, EyeOff } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -11,8 +11,9 @@ import { PageDesignCanvas } from "./PageDesignCanvas"
 import { createPuckMetadata } from "@/lib/puck/metadata"
 import { useDataFlowStore } from "@/lib/stores/dataflow-store"
 import { PageStateProvider } from "@/lib/puck/context/PageStateContext"
-import { puckConfig } from "@/lib/puck/config"
+import { puckConfig, buildPuckConfigWithCustomComponents } from "@/lib/puck/config"
 import { resolvePageState } from "@/lib/executor/page-state-resolver"
+import { CustomComponent } from "@/lib/db/schema"
 import "@measured/puck/puck.css"
 
 interface PageEditorProps {
@@ -44,6 +45,9 @@ export function PageEditor({
   const [savedPuckData, setSavedPuckData] = useState<Data>(defaultPuckData)
   // Resolved page state for preview
   const [resolvedState, setResolvedState] = useState<Record<string, any>>({})
+  // Custom components state
+  const [customComponents, setCustomComponents] = useState<CustomComponent[]>([])
+  const [dynamicConfig, setDynamicConfig] = useState<Config>(puckConfig)
 
   // Get live dependencies and ALL nodes from the store
   const dependencies = useDataFlowStore((state) =>
@@ -52,6 +56,25 @@ export function PageEditor({
   const allNodes = useDataFlowStore((state) => state.nodes)
   const edges = useDataFlowStore((state) => state.edges)
   const updateNodeData = useDataFlowStore((state) => state.updateNodeData)
+
+  // Load custom components on mount
+  useEffect(() => {
+    async function fetchCustomComponents() {
+      try {
+        const response = await fetch("/api/custom-components?userId=placeholder-user-id")
+        if (response.ok) {
+          const components = await response.json()
+          setCustomComponents(components)
+          // Build dynamic config with custom components
+          const config = buildPuckConfigWithCustomComponents(components)
+          setDynamicConfig(config)
+        }
+      } catch (error) {
+        console.error("Error loading custom components:", error)
+      }
+    }
+    fetchCustomComponents()
+  }, [])
 
   // Initialize Puck data from page node
   useEffect(() => {
@@ -118,7 +141,10 @@ export function PageEditor({
   useEffect(() => {
     const resolveState = async () => {
       try {
-        const graphData = { nodes: allNodes, edges }
+        const graphData = { 
+          nodes: allNodes as any[], 
+          edges: edges as any[] 
+        }
         const initialState = await resolvePageState(graphData, pageNodeId)
         setResolvedState(initialState)
       } catch (error) {
@@ -256,7 +282,7 @@ export function PageEditor({
           /* Preview mode - full-screen interactive preview */
           <PageStateProvider initialState={resolvedState} projectId={projectId}>
             <div className="w-full h-full overflow-auto bg-white">
-              <Render config={puckConfig} data={savedPuckData} metadata={metadata} />
+              <Render config={dynamicConfig} data={savedPuckData} metadata={metadata} />
             </div>
           </PageStateProvider>
         ) : (
@@ -270,6 +296,7 @@ export function PageEditor({
                 onChange={handlePuckChange}
                 projectId={projectId}
                 resetKey={resetKey}
+                config={dynamicConfig}
               />
             </div>
           </PageStateProvider>

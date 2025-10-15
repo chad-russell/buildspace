@@ -15,13 +15,13 @@ export function stringToPath(dotPath: string): JsonPath {
   const tokens = dotPath.split(".");
   for (const token of tokens) {
     const re = /(\w+)?(\[[0-9]+\])*/g;
-    const matches = token.matchAll(re);
+    const matches = Array.from(token.matchAll(re));
     for (const m of matches) {
       if (!m[0]) continue;
       if (m[1]) parts.push(m[1]);
       const bracket = m[0].slice(m[1]?.length || 0);
       if (bracket) {
-        const idxMatches = bracket.matchAll(/\[([0-9]+)\]/g);
+        const idxMatches = Array.from(bracket.matchAll(/\[([0-9]+)\]/g));
         for (const im of idxMatches) parts.push(parseInt(im[1], 10));
       }
     }

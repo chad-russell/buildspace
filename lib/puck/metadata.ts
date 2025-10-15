@@ -11,6 +11,7 @@ export interface MarkedInput {
 export interface PuckMetadata {
   markedInputs: Record<string, MarkedInput>
   pageStateSchema?: PageStateField[]
+  componentProps?: Record<string, any>
 }
 
 /**
@@ -26,7 +27,7 @@ export function createPuckMetadata(
   dependencies.forEach((node) => {
     markedInputs[node.id] = {
       id: node.id,
-      type: node.type,
+      type: node.type || "unknown",
       label: node.data.label || node.id,
       data: node.data,
     }
@@ -118,5 +119,51 @@ export function resolveDataPath(
 
   // Resolve any $ref references in the result
   return resolveReference(result, markedInputs)
+}
+
+/**
+ * Creates metadata for component props
+ * Converts prop values into a format that child components can access
+ */
+export function createComponentPropsMetadata(
+  props: Record<string, any>
+): Record<string, any> {
+  return props
+}
+
+/**
+ * Resolves component props at runtime
+ * Handles literal values, page state references, and server data references
+ */
+export function resolveComponentProps(
+  propsConfig: Record<string, any>,
+  pageState?: Record<string, any>,
+  markedInputs?: Record<string, MarkedInput>
+): Record<string, any> {
+  const resolved: Record<string, any> = {}
+
+  Object.entries(propsConfig).forEach(([key, value]) => {
+    // If value is a reference object, resolve it
+    if (value && typeof value === "object" && value.$ref) {
+      if (markedInputs) {
+        resolved[key] = resolveReference(value, markedInputs)
+      } else {
+        resolved[key] = undefined
+      }
+    } else if (
+      value &&
+      typeof value === "object" &&
+      value.type === "pageState" &&
+      value.key
+    ) {
+      // Page state reference
+      resolved[key] = pageState?.[value.key]
+    } else {
+      // Literal value
+      resolved[key] = value
+    }
+  })
+
+  return resolved
 }
 

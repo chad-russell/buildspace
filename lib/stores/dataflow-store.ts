@@ -12,9 +12,9 @@ import {
 } from "reactflow"
 
 // ensure any bogus handle ids ("null", "undefined", null, "") are removed
-function sanitizeHandleId(id: any): string | undefined {
-  if (id === undefined || id === null) return undefined
-  if (id === "null" || id === "undefined" || id === "") return undefined
+function sanitizeHandleId(id: any): string | null {
+  if (id === undefined || id === null) return null
+  if (id === "null" || id === "undefined" || id === "") return null
   return id as string
 }
 
@@ -146,7 +146,7 @@ export const useDataFlowStore = create<DataFlowState>((set, get) => ({
     
     // Check if adding this edge would create a cycle
     // Do not set handle ids; let React Flow use defaults
-    const newEdges = addEdge({ source, target }, get().edges)
+    const newEdges = addEdge({ source, target, sourceHandle: null, targetHandle: null }, get().edges)
     const nodes = get().nodes
     
     // Simple cycle detection: check if there's already a path from target to source

@@ -2,14 +2,16 @@ import { ComponentConfig } from "@measured/puck"
 import { resolveDataPath, MarkedInput } from "../metadata"
 import { DataPathField } from "../fields/DataPathField"
 import { StateKeyField } from "../fields/StateKeyField"
+import { PropKeyField } from "../fields/PropKeyField"
 import { usePageState } from "../context/PageStateContext"
 
 export interface HeadingProps {
   text: string
   level: "1" | "2" | "3" | "4" | "5" | "6"
-  bindingType: "none" | "serverData" | "pageState"
+  bindingType: "none" | "serverData" | "pageState" | "componentProp"
   dataPath?: string
   stateKey?: string
+  propKey?: string
 }
 
 export const HeadingComponent: ComponentConfig<HeadingProps> = {
@@ -34,10 +36,12 @@ export const HeadingComponent: ComponentConfig<HeadingProps> = {
         { label: "Static Text", value: "none" },
         { label: "Server Data", value: "serverData" },
         { label: "Page State", value: "pageState" },
+        { label: "Component Props", value: "componentProp" },
       ],
     },
     dataPath: DataPathField,
     stateKey: StateKeyField,
+    propKey: PropKeyField,
   },
   defaultProps: {
     text: "Heading",
@@ -45,9 +49,10 @@ export const HeadingComponent: ComponentConfig<HeadingProps> = {
     bindingType: "none",
     dataPath: "",
     stateKey: "",
+    propKey: "",
   },
   // resolveData removed - was causing focus loss on input due to prop mutations
-  render: ({ text, level, bindingType, dataPath, stateKey, puck }) => {
+  render: ({ text, level, bindingType, dataPath, stateKey, propKey, puck }) => {
     let displayText = text
     let debugInfo = null
 
@@ -118,6 +123,53 @@ export const HeadingComponent: ComponentConfig<HeadingProps> = {
         debugInfo = (
           <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded text-xs font-normal">
             Bound to page state: {stateKey} (preview mode)
+          </div>
+        )
+      }
+    }
+
+    // Component Props Binding
+    if (bindingType === "componentProp") {
+      const componentProps = (puck?.metadata as any)?.componentProps
+      
+      if (!propKey) {
+        debugInfo = (
+          <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs font-normal">
+            Component props binding enabled but no prop selected
+          </div>
+        )
+      } else if (componentProps) {
+        // Get the value from component props
+        const propValue = componentProps[propKey]
+        
+        displayText =
+          propValue !== undefined
+            ? typeof propValue === "string"
+              ? propValue
+              : JSON.stringify(propValue)
+            : `[${propKey} not found]`
+        
+        if (propValue !== undefined) {
+          debugInfo = (
+            <div className="mt-2 p-2 bg-purple-50 border border-purple-200 rounded text-xs font-normal">
+              ✓ Component prop bound to: {propKey}
+            </div>
+          )
+        } else {
+          debugInfo = (
+            <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs font-normal">
+              ✗ Prop "{propKey}" not found
+              <div className="mt-1 text-red-700">
+                Available props: {Object.keys(componentProps).join(", ") || "(none)"}
+              </div>
+            </div>
+          )
+        }
+      } else {
+        // Design time: show binding info
+        debugInfo = (
+          <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded text-xs font-normal">
+            Bound to component prop: {propKey} (will resolve at runtime)
           </div>
         )
       }
