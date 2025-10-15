@@ -65,7 +65,7 @@ export function CustomComponentEditor({
       )
       if (!confirm) return
     }
-    router.push("/build/custom-components")
+    router.push("/build")
   }
 
   const handlePuckChange = (newData: Data) => {

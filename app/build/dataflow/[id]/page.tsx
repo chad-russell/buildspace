@@ -7,8 +7,11 @@ import { useDataFlowStore } from "@/lib/stores/dataflow-store"
 import { Button } from "@/components/ui/button"
 import { Save, Play } from "lucide-react"
 import { useRunStore } from "@/lib/stores/run-store"
+import { useRouter } from "next/navigation"
+import { ArrowLeft } from "lucide-react"
 
 export default function DataFlowEditorPage() {
+  const router = useRouter()
   const params = useParams()
   const flowId = params.id as string
   const {
@@ -112,6 +115,14 @@ export default function DataFlowEditorPage() {
     <div className="h-screen w-full flex flex-col">
       <div className="h-14 border-b flex items-center justify-between px-4 bg-white">
         <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push("/build")}
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back
+          </Button>
           <h1 className="text-lg font-semibold">BuildSpace</h1>
           <input
             type="text"
